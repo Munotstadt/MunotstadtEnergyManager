@@ -31,3 +31,6 @@
 [09.08.2026 07:15:24] Verarbeite uploads/20260809_071454_data_export_00000000F6524E6C.csv ...
 [09.08.2026 07:16:25]   -> 404 Tag(e) geschrieben (01.01.2026 - 31.12.2025)
 [09.08.2026 07:16:25] Fertig. 1 Datei(en) verarbeitet, 404 Tageswerte upserted.
+[09.08.2026 07:21:47] Verarbeite uploads/20260809_072119_data_export_00000000F6524E6C.csv ...
+[09.08.2026 07:22:48]   -> 460 Tag(e) geschrieben (01.01.2024 - 31.12.2024)
+[09.08.2026 07:22:48] Fertig. 1 Datei(en) verarbeitet, 460 Tageswerte upserted.
