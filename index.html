@@ -138,6 +138,22 @@
       <div id="chartWeekday"></div>
     </div>
 
+    <h2>Jahresvergleich pro Monat <span class="hint">Jan–Dez, Jahre farblich unterschieden</span></h2>
+    <div class="tabs" id="metricTabs">
+      <div class="tab" data-metric="Consumption_kWh">Verbrauch</div>
+      <div class="tab" data-metric="Production_kWh">Produktion</div>
+      <div class="tab" data-metric="GridTo_kWh">Einspeisung</div>
+      <div class="tab" data-metric="GridFrom_kWh">Bezug</div>
+      <div class="tab" data-metric="Ladestation_kWh">Ladestation</div>
+      <div class="tab" data-metric="Entfeuchter_Waschen_kWh">Entfeuchter</div>
+      <div class="tab" data-metric="Wasserpumpe_kWh">Wasserpumpe</div>
+      <div class="tab" data-metric="OtherConsumption">OtherConsumption</div>
+    </div>
+    <div class="card">
+      <div class="legend" id="yearLegend"></div>
+      <div id="chartYearly"></div>
+    </div>
+
     <h2>Gerätenutzung pro Monat <span class="hint">Entfeuchter, Wasserpumpe, Ladestation</span></h2>
     <div class="card">
       <div class="legend">
@@ -170,6 +186,10 @@ const MONTH_LABELS = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Ok
 
 let DATA = [];
 let currentRange = "90";
+let currentMetric = "Consumption_kWh";
+
+const YEAR_PALETTE = ["#E30613", "#4a9eff", "#2ecc71", "#f5a623", "#b06ff0", "#68686f"];
+function colorForYearIndex(i){ return YEAR_PALETTE[i % YEAR_PALETTE.length]; }
 
 function fmt(n, digits=1){
   if (n === null || n === undefined || isNaN(n)) return "–";
@@ -210,6 +230,7 @@ function renderAll(){
   renderMonthly();
   renderAutarky();
   renderWeekday();
+  renderYearly();
   renderDevices();
   renderTable();
 }
@@ -500,6 +521,38 @@ function renderWeekday(){
   ], {height: 190});
 }
 
+function metricValue(row, metric){
+  if (metric === 'OtherConsumption') return (row.Consumption_kWh||0) - (row.Ladestation_kWh||0);
+  return row[metric] || 0;
+}
+
+function yearlyMonthlyData(metric){
+  const years = [...new Set(DATA.map(r => r.Date_ISO.slice(0,4)))].sort();
+  const map = {}; // monthNum -> year -> sum
+  DATA.forEach(r => {
+    const y = r.Date_ISO.slice(0,4);
+    const m = parseInt(r.Date_ISO.slice(5,7), 10);
+    map[m] = map[m] || {};
+    map[m][y] = (map[m][y] || 0) + metricValue(r, metric);
+  });
+  const categories = MONTH_LABELS.map((label, i) => {
+    const m = i + 1;
+    const obj = { label };
+    years.forEach(y => { obj[y] = (map[m] && map[m][y]) || 0; });
+    return obj;
+  });
+  return { years, categories };
+}
+
+function renderYearly(){
+  const { years, categories } = yearlyMonthlyData(currentMetric);
+  const seriesDefs = years.map((y, i) => ({ field: y, color: colorForYearIndex(i) }));
+  document.getElementById('yearLegend').innerHTML = years.map((y, i) => `
+    <span><i class="swatch" style="background:${colorForYearIndex(i)}"></i>${y}</span>
+  `).join('');
+  renderBarChart('chartYearly', categories, seriesDefs, { height: 210 });
+}
+
 function renderDevices(){
   const monthly = monthlyAggregates();
   renderBarChart('chartDevices', monthly, [
@@ -533,6 +586,16 @@ document.getElementById('rangeTabs').addEventListener('click', e => {
   renderDailyCharts();
 });
 document.querySelector(`#rangeTabs .tab[data-range="${currentRange}"]`).classList.add('active');
+
+// ---------- Metric tabs (Jahresvergleich) ----------
+document.getElementById('metricTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  currentMetric = tab.dataset.metric;
+  document.querySelectorAll('#metricTabs .tab').forEach(t => t.classList.toggle('active', t===tab));
+  renderYearly();
+});
+document.querySelector(`#metricTabs .tab[data-metric="${currentMetric}"]`).classList.add('active');
 
 load();
 </script>
