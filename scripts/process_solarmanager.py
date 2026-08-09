@@ -14,9 +14,12 @@ import shutil
 import sys
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import libsql_client as libsql
+
+TZ_ZURICH = ZoneInfo("Europe/Zurich")
 
 UPLOAD_DIR = "uploads"
 PROCESSED_DIR = "processed"
@@ -29,8 +32,14 @@ TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
 INTERVAL_HOURS = 0.25  # 15-Minuten-Raster
 
 
+def now_zurich():
+    """Aktuelle Zeit in Europe/Zurich - GitHub Actions Runner laufen in UTC,
+    daher explizite Konvertierung fuer konsistente Zeitstempel."""
+    return datetime.now(TZ_ZURICH)
+
+
 def log(msg):
-    ts = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+    ts = now_zurich().strftime("%d.%m.%Y %H:%M:%S")
     line = f"[{ts}] {msg}"
     print(line)
     os.makedirs(LOG_DIR, exist_ok=True)
@@ -197,7 +206,7 @@ ON CONFLICT(Date_ISO) DO UPDATE SET
 
 
 def upsert_daily(conn, daily_df):
-    now_str = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+    now_str = now_zurich().strftime("%d.%m.%Y %H:%M:%S")
     for _, row in daily_df.iterrows():
         conn.execute(UPSERT_SQL, [
             row["Date_ISO"], row["Date_Display"],
