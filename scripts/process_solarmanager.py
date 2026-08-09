@@ -9,6 +9,7 @@ verarbeitete Dateien nach processed/ und schreibt einen Log-Eintrag.
 """
 
 import glob
+import json
 import os
 import shutil
 import sys
@@ -25,6 +26,8 @@ UPLOAD_DIR = "uploads"
 PROCESSED_DIR = "processed"
 LOG_DIR = "logs"
 LOG_FILE = os.path.join(LOG_DIR, "run_log.txt")
+DATA_DIR = "data"
+JSON_EXPORT_PATH = os.path.join(DATA_DIR, "solarmanager_daily.json")
 
 TURSO_URL = os.environ.get("TURSO_DATABASE_URL")
 TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
@@ -217,6 +220,23 @@ def upsert_daily(conn, daily_df):
         ])
 
 
+def export_json(conn):
+    """Exportiert die gesamte Tabelle als statisches JSON fuer das Dashboard
+    (GitHub Pages liest diese Datei direkt - kein Live-DB-Zugriff aus dem
+    Browser noetig, analog zum JSON-Snapshot-Muster der anderen Munotstadt-Projekte)."""
+    result = conn.execute("SELECT * FROM solarmanager_data ORDER BY Date_ISO")
+    rows = [row.asdict() for row in result.rows]
+    os.makedirs(DATA_DIR, exist_ok=True)
+    payload = {
+        "generated_at": now_zurich().strftime("%d.%m.%Y %H:%M:%S"),
+        "row_count": len(rows),
+        "data": rows,
+    }
+    with open(JSON_EXPORT_PATH, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
+    log(f"JSON-Export geschrieben: {JSON_EXPORT_PATH} ({len(rows)} Zeilen).")
+
+
 def main():
     if not TURSO_URL or not TURSO_TOKEN:
         log("FEHLER: TURSO_DATABASE_URL / TURSO_AUTH_TOKEN nicht gesetzt.")
@@ -224,10 +244,6 @@ def main():
 
     os.makedirs(PROCESSED_DIR, exist_ok=True)
     csv_files = sorted(glob.glob(os.path.join(UPLOAD_DIR, "*.csv")))
-
-    if not csv_files:
-        log("Keine neuen Uploads gefunden.")
-        return
 
     conn = ResilientConnection(TURSO_URL, TURSO_TOKEN)
 
@@ -238,6 +254,12 @@ def main():
         log("Pruefe TURSO_DATABASE_URL (Format libsql://<db>-<org>.turso.io, ohne trailing slash) "
             "und TURSO_AUTH_TOKEN (Datenbank-Token, NICHT der Platform-API-Token von turso_admin).")
         sys.exit(1)
+
+    if not csv_files:
+        log("Keine neuen Uploads gefunden. Aktualisiere JSON-Export trotzdem (falls veraltet).")
+        export_json(conn)
+        conn.close()
+        return
 
     total_days = 0
 
@@ -256,6 +278,7 @@ def main():
             # Datei bleibt in uploads/, damit sie nicht stillschweigend verloren geht.
             continue
 
+    export_json(conn)
     conn.close()
     log(f"Fertig. {len(csv_files)} Datei(en) verarbeitet, {total_days} Tageswerte upserted.")
 
