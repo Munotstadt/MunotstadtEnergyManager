@@ -6,7 +6,7 @@ Tageswerten (kWh) → Speicherung in Turso (`munotstadtenergydb`, Tabelle
 
 ## Ablauf
 
-1. `index.html` (GitHub Pages) — Upload-Interface, committed die rohe CSV
+1. `solarmanageruploader.html` (GitHub Pages) — Upload-Interface, committed die rohe CSV
    nach `uploads/` via GitHub Contents API (Client-seitig, mit persönlichem
    Access Token).
 2. Push nach `uploads/**.csv` triggert `.github/workflows/process-upload.yml`.
@@ -43,11 +43,30 @@ Settings → Secrets and variables → Actions:
 
 ## Nutzung
 
-`https://munotstadt.github.io/Munotstadt_EnergyManager/` öffnen, Token
+`https://munotstadt.github.io/Munotstadt_EnergyManager/` (Dashboard, Startseite) bzw. `.../solarmanageruploader.html` (Upload) öffnen, Token
 eintragen, CSV-Export vom Solarmanager auswählen, hochladen. Verarbeitung
 läuft automatisch (ca. 1–2 Minuten), Status unter dem Actions-Tab des Repos.
 
-## Tabelle `solarmanager_data`
+## Dashboards
+
+`index.html` (Startseite, GitHub Pages) visualisiert
+`data/solarmanager_daily.json`:
+
+- KPI-Kacheln: Verbrauch/Produktion letzte 7 Tage, Autarkiegrad (30 Tage), Total
+- Tagesverlauf Verbrauch/Produktion mit Zeitraum-Umschaltung (30/90/365 Tage/Alles)
+- Netzbezug/Einspeisung im gleichen Zeitraum
+- Monatsvergleich (Saisonalität PV-Produktion sichtbar)
+- Autarkiegrad pro Monat
+- Wochentag-Profil (Ø kWh pro Wochentag über gesamten Zeitraum)
+- Gerätenutzung pro Monat (Entfeuchter, Wasserpumpe, Ladestation, gestapelt)
+- Tabelle letzte 14 Tage
+
+Das Dashboard liest ausschliesslich das statische JSON — kein Turso-Zugriff
+und kein Token im Browser nötig. `data/solarmanager_daily.json` wird bei
+jedem Workflow-Lauf frisch aus der DB exportiert (auch wenn keine neue CSV
+vorliegt, z.B. bei manuellem "Run workflow").
+
+
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|

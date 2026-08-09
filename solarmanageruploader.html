@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Munotstadt Energy · Upload</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#101014; --panel:#17171d; --panel-2:#1e1e26; --border:#2a2a33;
+    --text:#f2f2f4; --text-dim:#9a9aa5; --accent:#E30613; --ok:#2ecc71; --warn:#f5a623;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',sans-serif; padding:24px 16px 64px; min-height:100vh;
+  }
+  .wrap{max-width:560px; margin:0 auto;}
+  h1{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.5rem;
+    margin:0 0 4px;
+  }
+  .sub{color:var(--text-dim); font-size:0.9rem; margin-bottom:28px;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:20px; margin-bottom:16px;
+  }
+  label{
+    display:block; font-size:0.8rem; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-dim); margin-bottom:6px; font-weight:600;
+  }
+  input[type=password], input[type=text]{
+    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:11px 12px; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:0.9rem;
+  }
+  input[type=file]{
+    width:100%; color:var(--text-dim); font-size:0.85rem; margin-top:4px;
+  }
+  .row{display:flex; align-items:center; gap:8px; margin-top:10px;}
+  .row input[type=checkbox]{width:16px; height:16px;}
+  .row label{margin:0; text-transform:none; letter-spacing:0; color:var(--text-dim); font-weight:400; font-size:0.85rem;}
+  button{
+    width:100%; background:var(--accent); color:#fff; border:none; border-radius:8px;
+    padding:14px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem;
+    margin-top:8px; cursor:pointer;
+  }
+  button:disabled{opacity:.5;}
+  #status{
+    margin-top:16px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem;
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .ok{color:var(--ok);}
+  .err{color:var(--accent);}
+  .warn{color:var(--warn);}
+  .filename{font-family:'IBM Plex Mono',monospace; color:var(--text-dim); font-size:0.85rem; margin-top:6px;}
+  .footer{color:var(--text-dim); font-size:0.75rem; margin-top:24px; text-align:center;}
+  a{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Solarmanager Upload</h1>
+  <div class="sub">EKZ Export hochladen &middot; wird automatisch zu Tageswerten aggregiert</div>
+
+  <div class="card">
+    <label for="pat">GitHub Personal Access Token</label>
+    <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+    <div class="row">
+      <input type="checkbox" id="remember">
+      <label for="remember">Token in diesem Browser merken</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <label for="file">EKZ Solarmanager CSV</label>
+    <input type="file" id="file" accept=".csv,text/csv">
+    <div class="filename" id="filename"></div>
+  </div>
+
+  <button id="uploadBtn">Hochladen &amp; verarbeiten</button>
+  <div id="status"></div>
+
+  <div class="footer">
+    <a href="index.html">&larr; Zurück zum Dashboard</a><br><br>
+    Repo: <a href="https://github.com/Munotstadt/Munotstadt_EnergyManager" target="_blank">Munotstadt/Munotstadt_EnergyManager</a><br>
+    Nach dem Upload läuft die Verarbeitung automatisch per GitHub Actions (ca. 1&ndash;2 Min).
+  </div>
+</div>
+
+<script>
+const OWNER = "Munotstadt";
+const REPO = "Munotstadt_EnergyManager";
+const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents`;
+
+const patInput = document.getElementById('pat');
+const rememberBox = document.getElementById('remember');
+const fileInput = document.getElementById('file');
+const filenameEl = document.getElementById('filename');
+const statusEl = document.getElementById('status');
+const btn = document.getElementById('uploadBtn');
+
+// Gespeichertes Token laden
+const saved = localStorage.getItem('solarmanager_pat');
+if (saved) { patInput.value = saved; rememberBox.checked = true; }
+
+rememberBox.addEventListener('change', () => {
+  if (!rememberBox.checked) localStorage.removeItem('solarmanager_pat');
+});
+
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0];
+  filenameEl.textContent = f ? `${f.name} (${(f.size/1024).toFixed(1)} KB)` : '';
+});
+
+function setStatus(msg, cls) {
+  statusEl.textContent = msg;
+  statusEl.className = cls || '';
+}
+
+function toBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+
+btn.addEventListener('click', async () => {
+  const token = patInput.value.trim();
+  const file = fileInput.files[0];
+
+  if (!token) { setStatus('Bitte GitHub Token eingeben.', 'err'); return; }
+  if (!file) { setStatus('Bitte zuerst eine CSV-Datei auswählen.', 'err'); return; }
+  if (!file.name.toLowerCase().endsWith('.csv')) { setStatus('Nur .csv Dateien werden unterstützt.', 'err'); return; }
+
+  if (rememberBox.checked) localStorage.setItem('solarmanager_pat', token);
+
+  btn.disabled = true;
+  setStatus('Lese Datei...', 'warn');
+
+  try {
+    const b64 = await toBase64(file);
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `uploads/${stamp}_${safeName}`;
+
+    setStatus('Lade zu GitHub hoch...', 'warn');
+
+    const res = await fetch(`${API}/${encodeURIComponent(path)}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json'
+      },
+      body: JSON.stringify({
+        message: `Solarmanager Upload: ${safeName}`,
+        content: b64
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(`GitHub API ${res.status}: ${err.message || 'Unbekannter Fehler'}`);
+    }
+
+    setStatus(
+      `Upload erfolgreich!\nDatei: ${path}\n\nDie Verarbeitung startet automatisch (GitHub Actions).\nStatus: https://github.com/${OWNER}/${REPO}/actions`,
+      'ok'
+    );
+    fileInput.value = '';
+    filenameEl.textContent = '';
+  } catch (e) {
+    setStatus(`Fehler: ${e.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

@@ -3,183 +3,538 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Munotstadt Solarmanager · Upload</title>
+<title>Munotstadt Energy · Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#101014; --panel:#17171d; --panel-2:#1e1e26; --border:#2a2a33;
-    --text:#f2f2f4; --text-dim:#9a9aa5; --accent:#E30613; --ok:#2ecc71; --warn:#f5a623;
+    --text:#f2f2f4; --text-dim:#9a9aa5; --text-dim2:#68686f;
+    --accent:#E30613; --accent-dim:#7a0410;
+    --green:#2ecc71; --blue:#4a9eff; --amber:#f5a623; --purple:#b06ff0;
+    --grid:#26262f;
   }
   *{box-sizing:border-box;}
   body{
     margin:0; background:var(--bg); color:var(--text);
-    font-family:'Inter',sans-serif; padding:24px 16px 64px; min-height:100vh;
+    font-family:'Inter',sans-serif; padding:20px 14px 60px;
   }
-  .wrap{max-width:560px; margin:0 auto;}
-  h1{
-    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.5rem;
-    margin:0 0 4px;
+  .wrap{max-width:920px; margin:0 auto;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.4rem; margin:0 0 2px;}
+  .sub{color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;}
+  h2{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1rem;
+    margin:28px 0 10px; color:var(--text);
   }
-  .sub{color:var(--text-dim); font-size:0.9rem; margin-bottom:28px;}
+  h2 .hint{color:var(--text-dim); font-weight:400; font-size:0.78rem; margin-left:6px;}
+
+  .kpi-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:8px;}
+  @media(min-width:600px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+  .kpi{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:14px 14px 12px;
+  }
+  .kpi .label{font-size:0.7rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-dim);}
+  .kpi .value{font-family:'IBM Plex Mono',monospace; font-size:1.35rem; font-weight:600; margin-top:4px;}
+  .kpi .value small{font-size:0.7rem; color:var(--text-dim); font-weight:400;}
+  .kpi .delta{font-size:0.72rem; margin-top:3px;}
+  .kpi .delta.up{color:var(--green);}
+  .kpi .delta.down{color:var(--accent);}
+
   .card{
     background:var(--panel); border:1px solid var(--border); border-radius:12px;
-    padding:20px; margin-bottom:16px;
+    padding:16px 14px 8px; margin-bottom:6px;
   }
-  label{
-    display:block; font-size:0.8rem; text-transform:uppercase; letter-spacing:.04em;
-    color:var(--text-dim); margin-bottom:6px; font-weight:600;
+  .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:0.76rem; color:var(--text-dim); margin-bottom:6px;}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .swatch{width:9px; height:9px; border-radius:2px; display:inline-block;}
+
+  .tabs{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .tab{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim);
+    font-family:'IBM Plex Mono',monospace; font-size:0.75rem; padding:6px 11px;
+    border-radius:7px; cursor:pointer;
   }
-  input[type=password], input[type=text]{
-    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
-    padding:11px 12px; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:0.9rem;
-  }
-  input[type=file]{
-    width:100%; color:var(--text-dim); font-size:0.85rem; margin-top:4px;
-  }
-  .row{display:flex; align-items:center; gap:8px; margin-top:10px;}
-  .row input[type=checkbox]{width:16px; height:16px;}
-  .row label{margin:0; text-transform:none; letter-spacing:0; color:var(--text-dim); font-weight:400; font-size:0.85rem;}
-  button{
-    width:100%; background:var(--accent); color:#fff; border:none; border-radius:8px;
-    padding:14px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem;
-    margin-top:8px; cursor:pointer;
-  }
-  button:disabled{opacity:.5;}
-  #status{
-    margin-top:16px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem;
-    white-space:pre-wrap; word-break:break-word;
-  }
-  .ok{color:var(--ok);}
-  .err{color:var(--accent);}
-  .warn{color:var(--warn);}
-  .filename{font-family:'IBM Plex Mono',monospace; color:var(--text-dim); font-size:0.85rem; margin-top:6px;}
-  .footer{color:var(--text-dim); font-size:0.75rem; margin-top:24px; text-align:center;}
+  .tab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+
+  svg{width:100%; height:auto; display:block; touch-action:pan-y;}
+  .axis-label{font-family:'IBM Plex Mono',monospace; font-size:9.5px; fill:var(--text-dim2);}
+  .gridline{stroke:var(--grid); stroke-width:1;}
+  .tooltip-line{stroke:var(--text-dim); stroke-width:1; stroke-dasharray:2,2;}
+  .tt-box{fill:var(--panel-2); stroke:var(--border); stroke-width:1;}
+  .tt-text{font-family:'IBM Plex Mono',monospace; font-size:10.5px; fill:var(--text);}
+  .tt-text.dim{fill:var(--text-dim);}
+
+  table{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:0.78rem;}
+  th{text-align:right; color:var(--text-dim); font-weight:500; padding:6px 6px; border-bottom:1px solid var(--border); font-size:0.68rem; text-transform:uppercase;}
+  th:first-child, td:first-child{text-align:left;}
+  td{text-align:right; padding:6px 6px; border-bottom:1px solid var(--grid);}
+  tr:last-child td{border-bottom:none;}
+
+  #status{color:var(--text-dim); font-family:'IBM Plex Mono',monospace; font-size:0.82rem; padding:40px 0; text-align:center;}
+  .footer{color:var(--text-dim2); font-size:0.72rem; text-align:center; margin-top:30px;}
   a{color:var(--accent);}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Solarmanager Upload</h1>
-  <div class="sub">EKZ Export hochladen &middot; wird automatisch zu Tageswerten aggregiert</div>
-
-  <div class="card">
-    <label for="pat">GitHub Personal Access Token</label>
-    <input type="password" id="pat" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-    <div class="row">
-      <input type="checkbox" id="remember">
-      <label for="remember">Token in diesem Browser merken</label>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+    <div>
+      <h1>Energy Dashboard</h1>
+      <div class="sub" id="subline">Lade Daten...</div>
     </div>
+    <a href="solarmanageruploader.html" style="flex-shrink:0; background:var(--panel); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:0.75rem; padding:8px 12px; border-radius:8px; text-decoration:none; white-space:nowrap;">&#8593; Upload</a>
   </div>
+  <div id="status">Lade solarmanager_daily.json...</div>
+  <div id="content" style="display:none;">
 
-  <div class="card">
-    <label for="file">EKZ Solarmanager CSV</label>
-    <input type="file" id="file" accept=".csv,text/csv">
-    <div class="filename" id="filename"></div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <h2>Tagesverlauf <span class="hint">Verbrauch &amp; Produktion</span></h2>
+    <div class="tabs" id="rangeTabs">
+      <div class="tab" data-range="30">30 Tage</div>
+      <div class="tab" data-range="90">90 Tage</div>
+      <div class="tab" data-range="365">1 Jahr</div>
+      <div class="tab" data-range="all">Alles</div>
+    </div>
+    <div class="card">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--accent)"></i>Verbrauch</span>
+        <span><i class="swatch" style="background:var(--green)"></i>Produktion</span>
+      </div>
+      <div id="chartDaily"></div>
+    </div>
+
+    <h2>Netzbezug &amp; Einspeisung <span class="hint">gleicher Zeitraum</span></h2>
+    <div class="card">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--amber)"></i>Netzbezug</span>
+        <span><i class="swatch" style="background:var(--blue)"></i>Einspeisung</span>
+      </div>
+      <div id="chartGrid"></div>
+    </div>
+
+    <h2>Monatsvergleich <span class="hint">Saisonalität: Verbrauch vs. Produktion pro Monat</span></h2>
+    <div class="card">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--accent)"></i>Verbrauch</span>
+        <span><i class="swatch" style="background:var(--green)"></i>Produktion</span>
+      </div>
+      <div id="chartMonthly"></div>
+    </div>
+
+    <h2>Autarkiegrad pro Monat <span class="hint">Anteil Eigenverbrauch, der nicht aus dem Netz kam</span></h2>
+    <div class="card">
+      <div id="chartAutarky"></div>
+    </div>
+
+    <h2>Wochentag-Profil <span class="hint">Ø kWh pro Wochentag, über gesamten Zeitraum</span></h2>
+    <div class="card">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--accent)"></i>Verbrauch</span>
+        <span><i class="swatch" style="background:var(--green)"></i>Produktion</span>
+      </div>
+      <div id="chartWeekday"></div>
+    </div>
+
+    <h2>Gerätenutzung pro Monat <span class="hint">Entfeuchter, Wasserpumpe, Ladestation</span></h2>
+    <div class="card">
+      <div class="legend">
+        <span><i class="swatch" style="background:var(--purple)"></i>Entfeuchter</span>
+        <span><i class="swatch" style="background:var(--blue)"></i>Wasserpumpe</span>
+        <span><i class="swatch" style="background:var(--amber)"></i>Ladestation</span>
+      </div>
+      <div id="chartDevices"></div>
+    </div>
+
+    <h2>Letzte 14 Tage</h2>
+    <div class="card" style="padding-bottom:14px;">
+      <table id="recentTable"></table>
+    </div>
+
   </div>
-
-  <button id="uploadBtn">Hochladen &amp; verarbeiten</button>
-  <div id="status"></div>
-
-  <div class="footer">
-    Repo: <a href="https://github.com/Munotstadt/Munotstadt_EnergyManager" target="_blank">Munotstadt/Munotstadt_EnergyManager</a><br>
-    Nach dem Upload läuft die Verarbeitung automatisch per GitHub Actions (ca. 1&ndash;2 Min).
-  </div>
+  <div class="footer" id="footerInfo"></div>
 </div>
 
 <script>
-const OWNER = "Munotstadt";
-const REPO = "Munotstadt_EnergyManager";
-const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents`;
+const JSON_PATH = "data/solarmanager_daily.json";
 
-const patInput = document.getElementById('pat');
-const rememberBox = document.getElementById('remember');
-const fileInput = document.getElementById('file');
-const filenameEl = document.getElementById('filename');
-const statusEl = document.getElementById('status');
-const btn = document.getElementById('uploadBtn');
+const COLORS = {
+  consumption: "#E30613", production: "#2ecc71",
+  gridFrom: "#f5a623", gridTo: "#4a9eff",
+  entfeuchter: "#b06ff0", wasserpumpe: "#4a9eff", ladestation: "#f5a623"
+};
+const WEEKDAY_LABELS = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+const MONTH_LABELS = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 
-// Gespeichertes Token laden
-const saved = localStorage.getItem('solarmanager_pat');
-if (saved) { patInput.value = saved; rememberBox.checked = true; }
+let DATA = [];
+let currentRange = "90";
 
-rememberBox.addEventListener('change', () => {
-  if (!rememberBox.checked) localStorage.removeItem('solarmanager_pat');
-});
-
-fileInput.addEventListener('change', () => {
-  const f = fileInput.files[0];
-  filenameEl.textContent = f ? `${f.name} (${(f.size/1024).toFixed(1)} KB)` : '';
-});
-
-function setStatus(msg, cls) {
-  statusEl.textContent = msg;
-  statusEl.className = cls || '';
+function fmt(n, digits=1){
+  if (n === null || n === undefined || isNaN(n)) return "–";
+  return n.toLocaleString('de-CH', {minimumFractionDigits:digits, maximumFractionDigits:digits});
 }
 
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+function parseISO(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Date(y, m-1, d);
 }
 
-function pad(n){ return String(n).padStart(2,'0'); }
-
-btn.addEventListener('click', async () => {
-  const token = patInput.value.trim();
-  const file = fileInput.files[0];
-
-  if (!token) { setStatus('Bitte GitHub Token eingeben.', 'err'); return; }
-  if (!file) { setStatus('Bitte zuerst eine CSV-Datei auswählen.', 'err'); return; }
-  if (!file.name.toLowerCase().endsWith('.csv')) { setStatus('Nur .csv Dateien werden unterstützt.', 'err'); return; }
-
-  if (rememberBox.checked) localStorage.setItem('solarmanager_pat', token);
-
-  btn.disabled = true;
-  setStatus('Lese Datei...', 'warn');
-
-  try {
-    const b64 = await toBase64(file);
-    const now = new Date();
-    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `uploads/${stamp}_${safeName}`;
-
-    setStatus('Lade zu GitHub hoch...', 'warn');
-
-    const res = await fetch(`${API}/${encodeURIComponent(path)}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json'
-      },
-      body: JSON.stringify({
-        message: `Solarmanager Upload: ${safeName}`,
-        content: b64
-      })
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(`GitHub API ${res.status}: ${err.message || 'Unbekannter Fehler'}`);
+// ---------- Data loading ----------
+async function load(){
+  try{
+    const res = await fetch(JSON_PATH, {cache:"no-store"});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = await res.json();
+    DATA = (payload.data || []).slice().sort((a,b)=> a.Date_ISO < b.Date_ISO ? -1 : 1);
+    if (DATA.length === 0){
+      document.getElementById('status').textContent = "Noch keine Daten vorhanden. Bitte zuerst einen Export hochladen.";
+      return;
     }
-
-    setStatus(
-      `Upload erfolgreich!\nDatei: ${path}\n\nDie Verarbeitung startet automatisch (GitHub Actions).\nStatus: https://github.com/${OWNER}/${REPO}/actions`,
-      'ok'
-    );
-    fileInput.value = '';
-    filenameEl.textContent = '';
-  } catch (e) {
-    setStatus(`Fehler: ${e.message}`, 'err');
-  } finally {
-    btn.disabled = false;
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('subline').textContent =
+      `${DATA[0].Date_Display} – ${DATA[DATA.length-1].Date_Display} · ${DATA.length} Tage`;
+    document.getElementById('footerInfo').textContent =
+      `Datenstand: ${payload.generated_at || '–'} · ${payload.row_count ?? DATA.length} Zeilen`;
+    renderAll();
+  } catch(e){
+    document.getElementById('status').textContent = `Fehler beim Laden: ${e.message}`;
   }
+}
+
+function renderAll(){
+  renderKPIs();
+  renderDailyCharts();
+  renderMonthly();
+  renderAutarky();
+  renderWeekday();
+  renderDevices();
+  renderTable();
+}
+
+// ---------- KPIs ----------
+function sumRange(rows, field){
+  return rows.reduce((s,r)=> s + (r[field]||0), 0);
+}
+
+function renderKPIs(){
+  const last = DATA[DATA.length-1];
+  const last7 = DATA.slice(-7);
+  const last30 = DATA.slice(-30);
+  const prev7 = DATA.slice(-14, -7);
+
+  const cons7 = sumRange(last7, 'Consumption_kWh');
+  const prod7 = sumRange(last7, 'Production_kWh');
+  const gridFrom7 = sumRange(last7, 'GridFrom_kWh');
+  const consPrev7 = sumRange(prev7, 'Consumption_kWh');
+
+  const autarky30 = (() => {
+    const c = sumRange(last30,'Consumption_kWh'), g = sumRange(last30,'GridFrom_kWh');
+    return c > 0 ? (1 - g/c) * 100 : null;
+  })();
+
+  const totalCons = sumRange(DATA, 'Consumption_kWh');
+  const totalProd = sumRange(DATA, 'Production_kWh');
+
+  const deltaCons = consPrev7 > 0 ? ((cons7 - consPrev7) / consPrev7 * 100) : null;
+
+  const cards = [
+    { label: "Verbrauch (7 Tage)", value: `${fmt(cons7)} <small>kWh</small>`,
+      delta: deltaCons !== null ? `${deltaCons>=0?'+':''}${fmt(deltaCons,0)}% vs. Vorwoche` : "", 
+      deltaCls: deltaCons > 0 ? 'down' : 'up' },
+    { label: "Produktion (7 Tage)", value: `${fmt(prod7)} <small>kWh</small>` },
+    { label: "Autarkiegrad (30 Tage)", value: autarky30 !== null ? `${fmt(autarky30,0)} <small>%</small>` : "–" },
+    { label: "Total (gesamter Zeitraum)", value: `${fmt(totalCons,0)} <small>kWh Verbrauch</small>` },
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = cards.map(c => `
+    <div class="kpi">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+      ${c.delta ? `<div class="delta ${c.deltaCls}">${c.delta}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ---------- Reusable SVG line chart with touch tooltip ----------
+function renderLineChart(containerId, rows, seriesDefs, opts={}){
+  const container = document.getElementById(containerId);
+  const W = 880, H = opts.height || 200;
+  const padL = 34, padR = 8, padT = 10, padB = 20;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+
+  const n = rows.length;
+  if (n === 0){ container.innerHTML = '<div style="color:var(--text-dim2);font-size:0.8rem;padding:20px 0;">Keine Daten im gewählten Zeitraum.</div>'; return; }
+
+  let maxVal = 0;
+  seriesDefs.forEach(s => rows.forEach(r => { maxVal = Math.max(maxVal, r[s.field]||0); }));
+  maxVal = maxVal <= 0 ? 1 : maxVal * 1.12;
+
+  const x = i => padL + (n === 1 ? innerW/2 : (i/(n-1)) * innerW);
+  const y = v => padT + innerH - (v/maxVal) * innerH;
+
+  const gridN = 4;
+  let gridLines = '';
+  let gridLabels = '';
+  for (let g=0; g<=gridN; g++){
+    const val = maxVal * g / gridN;
+    const yy = y(val);
+    gridLines += `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}"/>`;
+    gridLabels += `<text class="axis-label" x="${padL-6}" y="${yy+3}" text-anchor="end">${fmt(val,0)}</text>`;
+  }
+
+  const xLabelIdxs = [0, Math.floor(n*0.25), Math.floor(n*0.5), Math.floor(n*0.75), n-1];
+  let xLabels = '';
+  [...new Set(xLabelIdxs)].forEach(i => {
+    xLabels += `<text class="axis-label" x="${x(i)}" y="${H-4}" text-anchor="middle">${rows[i].Date_Display.slice(0,5)}</text>`;
+  });
+
+  let paths = '';
+  seriesDefs.forEach(s => {
+    let d = '';
+    rows.forEach((r,i) => {
+      const v = r[s.field] || 0;
+      d += (i===0 ? 'M' : 'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1) + ' ';
+    });
+    paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  });
+
+  const svgId = containerId + '_svg';
+  const svg = `
+    <svg id="${svgId}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      ${gridLines}${gridLabels}
+      ${paths}
+      ${xLabels}
+      <g id="${svgId}_tt" style="display:none;">
+        <line class="tooltip-line" x1="0" x2="0" y1="${padT}" y2="${H-padB}"/>
+        <circle r="3.2" fill="#fff"/>
+      </g>
+      <rect id="${svgId}_hit" x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="transparent"/>
+    </svg>
+    <div id="${svgId}_ttbox" style="display:none; position:relative; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text-dim); margin-top:2px;"></div>
+  `;
+  container.innerHTML = svg;
+
+  const svgEl = document.getElementById(svgId);
+  const hitEl = document.getElementById(svgId + '_hit');
+  const ttG = document.getElementById(svgId + '_tt');
+  const ttBox = document.getElementById(svgId + '_ttbox');
+  const circle = ttG.querySelector('circle');
+  const line = ttG.querySelector('line');
+
+  function showTooltip(clientX){
+    const rect = svgEl.getBoundingClientRect();
+    const scale = W / rect.width;
+    const localX = (clientX - rect.left) * scale;
+    let idx = Math.round(((localX - padL) / innerW) * (n-1));
+    idx = Math.max(0, Math.min(n-1, idx));
+    const r = rows[idx];
+    const xx = x(idx);
+    line.setAttribute('x1', xx); line.setAttribute('x2', xx);
+    circle.setAttribute('cx', xx);
+    circle.setAttribute('cy', y(r[seriesDefs[0].field]||0));
+    ttG.style.display = 'block';
+    ttBox.style.display = 'block';
+    ttBox.innerHTML = `<b style="color:var(--text)">${r.Date_Display}</b> &nbsp; ` +
+      seriesDefs.map(s => `<span style="color:${s.color}">${s.label}: ${fmt(r[s.field]||0)} kWh</span>`).join(' &nbsp; ');
+  }
+  function hideTooltip(){ ttG.style.display='none'; ttBox.style.display='none'; }
+
+  hitEl.addEventListener('mousemove', e => showTooltip(e.clientX));
+  hitEl.addEventListener('mouseleave', hideTooltip);
+  hitEl.addEventListener('touchstart', e => { showTooltip(e.touches[0].clientX); }, {passive:true});
+  hitEl.addEventListener('touchmove', e => { showTooltip(e.touches[0].clientX); }, {passive:true});
+  hitEl.addEventListener('touchend', hideTooltip);
+}
+
+// ---------- Reusable SVG grouped/stacked bar chart ----------
+function renderBarChart(containerId, categories, seriesDefs, opts={}){
+  const container = document.getElementById(containerId);
+  const W = 880, H = opts.height || 200;
+  const padL = 34, padR = 8, padT = 10, padB = 24;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const stacked = !!opts.stacked;
+
+  const n = categories.length;
+  if (n === 0){ container.innerHTML = '<div style="color:var(--text-dim2);font-size:0.8rem;padding:20px 0;">Keine Daten.</div>'; return; }
+
+  let maxVal = 0;
+  categories.forEach(c => {
+    if (stacked){
+      let sum = 0;
+      seriesDefs.forEach(s => sum += (c[s.field]||0));
+      maxVal = Math.max(maxVal, sum);
+    } else {
+      seriesDefs.forEach(s => maxVal = Math.max(maxVal, c[s.field]||0));
+    }
+  });
+  maxVal = maxVal <= 0 ? 1 : maxVal * 1.15;
+
+  const y = v => padT + innerH - (v/maxVal) * innerH;
+  const groupW = innerW / n;
+  const barGap = groupW * 0.22;
+  const barsW = groupW - barGap;
+  const singleBarW = stacked ? barsW : barsW / seriesDefs.length;
+
+  const gridN = 4;
+  let gridLines = '', gridLabels = '';
+  for (let g=0; g<=gridN; g++){
+    const val = maxVal * g / gridN;
+    const yy = y(val);
+    gridLines += `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}"/>`;
+    gridLabels += `<text class="axis-label" x="${padL-6}" y="${yy+3}" text-anchor="end">${fmt(val,0)}</text>`;
+  }
+
+  let bars = '', xLabels = '';
+  categories.forEach((c, i) => {
+    const gx = padL + i*groupW + barGap/2;
+    xLabels += `<text class="axis-label" x="${gx + barsW/2}" y="${H-6}" text-anchor="middle">${c.label}</text>`;
+    if (stacked){
+      let cum = 0;
+      seriesDefs.forEach(s => {
+        const v = c[s.field] || 0;
+        const y0 = y(cum), y1 = y(cum+v);
+        bars += `<rect x="${gx.toFixed(1)}" y="${y1.toFixed(1)}" width="${barsW.toFixed(1)}" height="${(y0-y1).toFixed(1)}" fill="${s.color}" rx="1.5"/>`;
+        cum += v;
+      });
+    } else {
+      seriesDefs.forEach((s, si) => {
+        const v = c[s.field] || 0;
+        const bx = gx + si*singleBarW;
+        const yy = y(v);
+        bars += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${(singleBarW*0.85).toFixed(1)}" height="${(padT+innerH-yy).toFixed(1)}" fill="${s.color}" rx="1.5"/>`;
+      });
+    }
+  });
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      ${gridLines}${gridLabels}${bars}${xLabels}
+    </svg>
+  `;
+}
+
+// ---------- Section renderers ----------
+function filteredByRange(range){
+  if (range === 'all') return DATA;
+  const nDays = parseInt(range, 10);
+  return DATA.slice(-nDays);
+}
+
+function renderDailyCharts(){
+  const rows = filteredByRange(currentRange);
+  renderLineChart('chartDaily', rows, [
+    {field:'Consumption_kWh', color: COLORS.consumption, label:'Verbrauch'},
+    {field:'Production_kWh', color: COLORS.production, label:'Produktion'},
+  ]);
+  renderLineChart('chartGrid', rows, [
+    {field:'GridFrom_kWh', color: COLORS.gridFrom, label:'Netzbezug'},
+    {field:'GridTo_kWh', color: COLORS.gridTo, label:'Einspeisung'},
+  ]);
+}
+
+function monthlyAggregates(){
+  const map = new Map();
+  DATA.forEach(r => {
+    const key = r.Date_ISO.slice(0,7);
+    if (!map.has(key)) map.set(key, {
+      key, Consumption_kWh:0, Production_kWh:0, GridFrom_kWh:0, GridTo_kWh:0,
+      Entfeuchter_Waschen_kWh:0, Wasserpumpe_kWh:0, Ladestation_kWh:0
+    });
+    const m = map.get(key);
+    m.Consumption_kWh += r.Consumption_kWh||0;
+    m.Production_kWh += r.Production_kWh||0;
+    m.GridFrom_kWh += r.GridFrom_kWh||0;
+    m.GridTo_kWh += r.GridTo_kWh||0;
+    m.Entfeuchter_Waschen_kWh += r.Entfeuchter_Waschen_kWh||0;
+    m.Wasserpumpe_kWh += r.Wasserpumpe_kWh||0;
+    m.Ladestation_kWh += r.Ladestation_kWh||0;
+  });
+  const arr = Array.from(map.values()).sort((a,b)=> a.key < b.key ? -1 : 1);
+  arr.forEach(m => {
+    const [y,mo] = m.key.split('-');
+    m.label = `${MONTH_LABELS[parseInt(mo,10)-1]} ${y.slice(2)}`;
+  });
+  return arr;
+}
+
+function renderMonthly(){
+  const monthly = monthlyAggregates();
+  renderBarChart('chartMonthly', monthly, [
+    {field:'Consumption_kWh', color: COLORS.consumption},
+    {field:'Production_kWh', color: COLORS.production},
+  ], {height: 210});
+}
+
+function renderAutarky(){
+  const monthly = monthlyAggregates();
+  const withAutarky = monthly.map(m => ({
+    label: m.label,
+    Autarky: m.Consumption_kWh > 0 ? Math.max(0, (1 - m.GridFrom_kWh/m.Consumption_kWh) * 100) : 0
+  }));
+  renderBarChart('chartAutarky', withAutarky, [
+    {field:'Autarky', color: COLORS.production}
+  ], {height: 170});
+}
+
+function renderWeekday(){
+  const sums = Array.from({length:7}, () => ({Consumption_kWh:0, Production_kWh:0, n:0}));
+  DATA.forEach(r => {
+    const d = parseISO(r.Date_ISO);
+    let wd = d.getDay(); // 0=Sun..6=Sat
+    wd = (wd + 6) % 7; // shift to 0=Mon..6=Sun
+    sums[wd].Consumption_kWh += r.Consumption_kWh||0;
+    sums[wd].Production_kWh += r.Production_kWh||0;
+    sums[wd].n += 1;
+  });
+  const cats = sums.map((s,i) => ({
+    label: WEEKDAY_LABELS[i],
+    Consumption_kWh: s.n ? s.Consumption_kWh/s.n : 0,
+    Production_kWh: s.n ? s.Production_kWh/s.n : 0,
+  }));
+  renderBarChart('chartWeekday', cats, [
+    {field:'Consumption_kWh', color: COLORS.consumption},
+    {field:'Production_kWh', color: COLORS.production},
+  ], {height: 190});
+}
+
+function renderDevices(){
+  const monthly = monthlyAggregates();
+  renderBarChart('chartDevices', monthly, [
+    {field:'Entfeuchter_Waschen_kWh', color: COLORS.entfeuchter},
+    {field:'Wasserpumpe_kWh', color: COLORS.wasserpumpe},
+    {field:'Ladestation_kWh', color: COLORS.ladestation},
+  ], {height: 200, stacked:true});
+}
+
+function renderTable(){
+  const rows = DATA.slice(-14).reverse();
+  const head = `<tr><th>Datum</th><th>Verbr.</th><th>Prod.</th><th>Netz⇩</th><th>Netz⇧</th></tr>`;
+  const body = rows.map(r => `
+    <tr>
+      <td>${r.Date_Display}</td>
+      <td>${fmt(r.Consumption_kWh)}</td>
+      <td>${fmt(r.Production_kWh)}</td>
+      <td>${fmt(r.GridFrom_kWh)}</td>
+      <td>${fmt(r.GridTo_kWh)}</td>
+    </tr>
+  `).join('');
+  document.getElementById('recentTable').innerHTML = head + body;
+}
+
+// ---------- Range tabs ----------
+document.getElementById('rangeTabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  currentRange = tab.dataset.range;
+  document.querySelectorAll('#rangeTabs .tab').forEach(t => t.classList.toggle('active', t===tab));
+  renderDailyCharts();
 });
+document.querySelector(`#rangeTabs .tab[data-range="${currentRange}"]`).classList.add('active');
+
+load();
 </script>
 </body>
 </html>
