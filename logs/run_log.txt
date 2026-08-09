@@ -36,3 +36,7 @@
 [09.08.2026 07:22:48] Fertig. 1 Datei(en) verarbeitet, 460 Tageswerte upserted.
 [09.08.2026 07:34:30] Keine neuen Uploads gefunden. Aktualisiere JSON-Export trotzdem (falls veraltet).
 [09.08.2026 07:34:30] JSON-Export geschrieben: data/solarmanager_daily.json (1045 Zeilen).
+[09.08.2026 07:41:13] Verarbeite uploads/20260809_074050_data_export_00000000F6524E6C.csv ...
+[09.08.2026 07:41:13]   -> 2 Tag(e) geschrieben (07.08.2026 - 08.08.2026)
+[09.08.2026 07:41:13] JSON-Export geschrieben: data/solarmanager_daily.json (1045 Zeilen).
+[09.08.2026 07:41:13] Fertig. 1 Datei(en) verarbeitet, 2 Tageswerte upserted.
