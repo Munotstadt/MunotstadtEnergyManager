@@ -144,7 +144,19 @@ class ResilientConnection:
                 self.client.close()
             except Exception:
                 pass
-        self.client = libsql.create_client_sync(url=self.url, auth_token=self.auth_token)
+        # HTTP-Transport statt WebSocket (Hrana/wss) verwenden: in GitHub Actions
+        # (und generell hinter Proxies/Firewalls) ist der WS-Handshake anfaelliger
+        # fuer generische "400 Invalid response status"-Fehler, die meist ein
+        # Auth-/URL-Problem verschleiern. HTTP liefert klarere Fehlercodes
+        # (z.B. 401 bei falschem Token) und ist robuster.
+        http_url = self.url
+        if http_url.startswith("libsql://"):
+            http_url = "https://" + http_url[len("libsql://"):]
+        elif http_url.startswith("wss://"):
+            http_url = "https://" + http_url[len("wss://"):]
+        elif http_url.startswith("ws://"):
+            http_url = "http://" + http_url[len("ws://"):]
+        self.client = libsql.create_client_sync(url=http_url, auth_token=self.auth_token)
 
     def execute(self, sql, args=None):
         last_err = None
@@ -209,6 +221,15 @@ def main():
         return
 
     conn = ResilientConnection(TURSO_URL, TURSO_TOKEN)
+
+    try:
+        conn.execute("SELECT 1")
+    except Exception as e:
+        log(f"FEHLER: Verbindungstest zu Turso fehlgeschlagen: {e}")
+        log("Pruefe TURSO_DATABASE_URL (Format libsql://<db>-<org>.turso.io, ohne trailing slash) "
+            "und TURSO_AUTH_TOKEN (Datenbank-Token, NICHT der Platform-API-Token von turso_admin).")
+        sys.exit(1)
+
     total_days = 0
 
     for path in csv_files:
