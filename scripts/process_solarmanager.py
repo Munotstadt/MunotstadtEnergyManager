@@ -57,7 +57,12 @@ def load_and_aggregate(csv_path):
     if "Date" not in df.columns:
         raise ValueError(f"{csv_path}: Spalte 'Date' fehlt - kein gültiger Solarmanager-Export?")
 
-    df["Date"] = pd.to_datetime(df["Date"])
+    # utc=True ist noetig, da EKZ-Exports ueber Sommer/Winterzeit-Wechsel
+    # gemischte UTC-Offsets (+01:00 / +02:00) enthalten koennen - ohne utc=True
+    # liefert pandas dann dtype=object statt datetime64 (.dt-Zugriff schlaegt fehl).
+    # Anschliessend zurueck auf Europe/Zurich konvertieren, damit Tagesgrenzen
+    # der lokalen (nicht der UTC-) Zeit entsprechen.
+    df["Date"] = pd.to_datetime(df["Date"], utc=True).dt.tz_convert("Europe/Zurich")
 
     col_consumption = "Consumption"
     col_production = "Production"
