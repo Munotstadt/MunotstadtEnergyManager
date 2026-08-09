@@ -3,3 +3,19 @@
 [09.08.2026 04:48:33] Verarbeite uploads/20260809_064809_data_export_00000000F6524E6C.csv ...
 [09.08.2026 04:48:33]   FEHLER bei uploads/20260809_064809_data_export_00000000F6524E6C.csv: Can only use .dt accessor with datetimelike values
 [09.08.2026 04:48:33] Fertig. 2 Datei(en) verarbeitet, 0 Tageswerte upserted.
+[09.08.2026 05:00:04] Verarbeite uploads/20260809_064643_data_export_00000000F6524E6C.csv ...
+[09.08.2026 05:00:05] DB-Fehler (Versuch 1/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:00:25] DB-Fehler (Versuch 2/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:00:46] DB-Fehler (Versuch 3/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:00:46]   FEHLER bei uploads/20260809_064643_data_export_00000000F6524E6C.csv: 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:00:46] Verarbeite uploads/20260809_064809_data_export_00000000F6524E6C.csv ...
+[09.08.2026 05:00:46] DB-Fehler (Versuch 1/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:01:07] DB-Fehler (Versuch 2/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:01:27] DB-Fehler (Versuch 3/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:01:27]   FEHLER bei uploads/20260809_064809_data_export_00000000F6524E6C.csv: 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:01:27] Verarbeite uploads/20260809_065932_data_export_00000000F6524E6C.csv ...
+[09.08.2026 05:01:28] DB-Fehler (Versuch 1/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:01:48] DB-Fehler (Versuch 2/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:02:09] DB-Fehler (Versuch 3/3): 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:02:09]   FEHLER bei uploads/20260809_065932_data_export_00000000F6524E6C.csv: 400, message='Invalid response status', url='wss://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io'
+[09.08.2026 05:02:09] Fertig. 3 Datei(en) verarbeitet, 0 Tageswerte upserted.
