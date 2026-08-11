@@ -44,3 +44,7 @@
 [09.08.2026 07:52:02]   -> 2 Tag(e) geschrieben (07.08.2026 - 08.08.2026)
 [09.08.2026 07:52:02] JSON-Export geschrieben: data/solarmanager_daily.json (1045 Zeilen).
 [09.08.2026 07:52:02] Fertig. 1 Datei(en) verarbeitet, 2 Tageswerte upserted.
+[11.08.2026 07:51:08] Verarbeite uploads/20260811_075035_data_export_00000000F6524E6C.csv ...
+[11.08.2026 07:51:13]   -> 31 Tag(e) geschrieben (01.08.2026 - 31.07.2026)
+[11.08.2026 07:51:14] JSON-Export geschrieben: data/solarmanager_daily.json (1047 Zeilen).
+[11.08.2026 07:51:14] Fertig. 1 Datei(en) verarbeitet, 31 Tageswerte upserted.
