@@ -9,19 +9,40 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#101014; --panel:#17171d; --panel-2:#1e1e26; --border:#2a2a33;
-    --text:#f2f2f4; --text-dim:#9a9aa5; --text-dim2:#68686f;
-    --accent:#E30613; --accent-dim:#7a0410;
-    --green:#2ecc71; --blue:#4a9eff; --amber:#f5a623; --purple:#b06ff0;
-    --grid:#26262f;
+    --red:#E30613;
+    --ink:#1a1a1a;
+    --grey-900:#2b2b2b;
+    --grey-600:#666;
+    --grey-300:#d8d8d8;
+    --grey-100:#f4f4f4;
+    --bg:#ffffff;
+    --radius:6px;
+    /* dashboard aliases mapped onto the reference palette */
+    --panel:#ffffff; --panel-2:#f4f4f4; --border:#d8d8d8;
+    --text:#1a1a1a; --text-dim:#666; --text-dim2:#8a8a8a;
+    --accent:#E30613; --accent-dim:#fdeceb;
+    --green:#1f9d55; --blue:#1f6feb; --amber:#b9770e; --purple:#7c3aed;
+    --grid:#e8e8e8;
   }
   *{box-sizing:border-box;}
   body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:'Inter',sans-serif; padding:20px 14px 60px;
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:15px; line-height:1.45;
   }
-  .wrap{max-width:920px; margin:0 auto;}
-  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.4rem; margin:0 0 2px;}
+  .wrap{max-width:1080px; margin:0 auto; padding:24px 20px 60px;}
+  header.topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; border-bottom:2px solid var(--ink);
+  }
+  header.topbar .brand{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px;}
+  header.topbar .brand span{color:var(--red);}
+  header.topbar .upload-link{
+    text-decoration:none; color:var(--ink); font-size:13px; font-weight:500;
+    padding:7px 12px; border-radius:var(--radius); white-space:nowrap;
+  }
+  header.topbar .upload-link:hover{background:var(--grey-100);}
+
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1.4rem; margin:0 0 2px;}
   .sub{color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;}
   h2{
     font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1rem;
@@ -29,11 +50,11 @@
   }
   h2 .hint{color:var(--text-dim); font-weight:400; font-size:0.78rem; margin-left:6px;}
 
-  .kpi-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:8px;}
+  .kpi-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:8px;}
   @media(min-width:600px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
   .kpi{
-    background:var(--panel); border:1px solid var(--border); border-radius:12px;
-    padding:14px 14px 12px;
+    background:var(--bg); border:1px solid var(--grey-300); border-radius:var(--radius);
+    padding:14px 16px 12px;
   }
   .kpi .label{font-size:0.7rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-dim);}
   .kpi .value{font-family:'IBM Plex Mono',monospace; font-size:1.35rem; font-weight:600; margin-top:4px;}
@@ -43,34 +64,41 @@
   .kpi .delta.down{color:var(--accent);}
 
   .card{
-    background:var(--panel); border:1px solid var(--border); border-radius:12px;
-    padding:16px 14px 8px; margin-bottom:6px;
+    background:var(--bg); border:1px solid var(--grey-300); border-radius:var(--radius);
+    padding:16px 18px 8px; margin-bottom:6px;
   }
-  .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:0.76rem; color:var(--text-dim); margin-bottom:6px;}
-  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .legend{display:flex; flex-wrap:wrap; gap:16px; font-size:0.76rem; color:var(--text-dim); margin-bottom:6px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
   .swatch{width:9px; height:9px; border-radius:2px; display:inline-block;}
 
-  .tabs{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .tabs{display:inline-flex; gap:0; margin-bottom:10px; flex-wrap:wrap; border:1px solid var(--grey-300); border-radius:var(--radius); overflow:hidden;}
   .tab{
-    background:var(--panel-2); border:1px solid var(--border); color:var(--text-dim);
-    font-family:'IBM Plex Mono',monospace; font-size:0.75rem; padding:6px 11px;
-    border-radius:7px; cursor:pointer;
+    background:#fff; border:none; border-right:1px solid var(--grey-300); color:var(--ink);
+    font-family:'Inter',sans-serif; font-weight:500; font-size:13px; padding:7px 14px;
+    cursor:pointer;
   }
-  .tab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .tab:last-child{border-right:none;}
+  .tab.active{background:var(--ink); color:#fff;}
+  .tab:hover:not(.active){background:var(--grey-100);}
 
   svg{width:100%; height:auto; display:block; touch-action:pan-y;}
   .axis-label{font-family:'IBM Plex Mono',monospace; font-size:9.5px; fill:var(--text-dim2);}
   .gridline{stroke:var(--grid); stroke-width:1;}
   .tooltip-line{stroke:var(--text-dim); stroke-width:1; stroke-dasharray:2,2;}
-  .tt-box{fill:var(--panel-2); stroke:var(--border); stroke-width:1;}
+  .tt-box{fill:var(--grey-100); stroke:var(--grey-300); stroke-width:1;}
   .tt-text{font-family:'IBM Plex Mono',monospace; font-size:10.5px; fill:var(--text);}
   .tt-text.dim{fill:var(--text-dim);}
 
   table{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:0.78rem;}
-  th{text-align:right; color:var(--text-dim); font-weight:500; padding:6px 6px; border-bottom:1px solid var(--border); font-size:0.68rem; text-transform:uppercase;}
+  th{text-align:right; color:var(--grey-600); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--grey-300); font-size:0.68rem; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;}
   th:first-child, td:first-child{text-align:left;}
-  td{text-align:right; padding:6px 6px; border-bottom:1px solid var(--grid);}
+  td{text-align:right; padding:8px 10px; border-bottom:1px solid var(--grid); white-space:nowrap;}
+  tr:hover td{background:var(--grey-100);}
   tr:last-child td{border-bottom:none;}
+  .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px;}
+  .table-scroll table{min-width:760px;}
+  .chart-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  .chart-scroll svg{display:block;}
 
   #status{color:var(--text-dim); font-family:'IBM Plex Mono',monospace; font-size:0.82rem; padding:40px 0; text-align:center;}
   .footer{color:var(--text-dim2); font-size:0.72rem; text-align:center; margin-top:30px;}
@@ -78,13 +106,14 @@
 </style>
 </head>
 <body>
+<header class="topbar">
+  <div class="brand">Munotstadt <span>Energy</span></div>
+  <a href="solarmanageruploader.html" class="upload-link">&#8593; Upload</a>
+</header>
 <div class="wrap">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-    <div>
-      <h1>Energy Dashboard</h1>
-      <div class="sub" id="subline">Lade Daten...</div>
-    </div>
-    <a href="solarmanageruploader.html" style="flex-shrink:0; background:var(--panel); border:1px solid var(--border); color:var(--text); font-family:'IBM Plex Mono',monospace; font-size:0.75rem; padding:8px 12px; border-radius:8px; text-decoration:none; white-space:nowrap;">&#8593; Upload</a>
+  <div>
+    <h1>Energy Dashboard</h1>
+    <div class="sub" id="subline">Lade Daten...</div>
   </div>
   <div id="status">Lade solarmanager_daily.json...</div>
   <div id="content" style="display:none;">
@@ -115,27 +144,20 @@
       <div id="chartGrid"></div>
     </div>
 
-    <h2>Monatsvergleich <span class="hint">Saisonalität: Verbrauch vs. Produktion pro Monat</span></h2>
+    <h2>Monatsvergleich <span class="hint">Saisonalität: Verbrauch vs. Produktion pro Monat · scrollbar</span></h2>
     <div class="card">
       <div class="legend">
         <span><i class="swatch" style="background:var(--accent)"></i>Verbrauch</span>
         <span><i class="swatch" style="background:var(--green)"></i>Produktion</span>
+        <span><i class="swatch" style="background:#8a1a1a"></i>⌀ 12M Verbrauch</span>
+        <span><i class="swatch" style="background:#0d5c33"></i>⌀ 12M Produktion</span>
       </div>
-      <div id="chartMonthly"></div>
+      <div class="chart-scroll" id="chartMonthly"></div>
     </div>
 
-    <h2>Autarkiegrad pro Monat <span class="hint">Anteil Eigenverbrauch, der nicht aus dem Netz kam</span></h2>
+    <h2>Autarkiegrad pro Monat <span class="hint">Anteil Eigenverbrauch, der nicht aus dem Netz kam · scrollbar</span></h2>
     <div class="card">
-      <div id="chartAutarky"></div>
-    </div>
-
-    <h2>Wochentag-Profil <span class="hint">Ø kWh pro Wochentag, über gesamten Zeitraum</span></h2>
-    <div class="card">
-      <div class="legend">
-        <span><i class="swatch" style="background:var(--accent)"></i>Verbrauch</span>
-        <span><i class="swatch" style="background:var(--green)"></i>Produktion</span>
-      </div>
-      <div id="chartWeekday"></div>
+      <div class="chart-scroll" id="chartAutarky"></div>
     </div>
 
     <h2>Jahresvergleich pro Monat <span class="hint">Jan–Dez, Jahre farblich unterschieden</span></h2>
@@ -169,6 +191,21 @@
       <table id="recentTable"></table>
     </div>
 
+    <h2>Monatsübersicht (kumuliert) <span class="hint">neuster Monat zuoberst</span></h2>
+    <div class="card" style="padding-bottom:14px;">
+      <div class="table-scroll"><table id="monthlyCumTable"></table></div>
+    </div>
+
+    <h2>Jahresvergleich YTD <span class="hint">Year-to-Date vs. Vorjahreszeitraum</span></h2>
+    <div class="card" style="padding-bottom:14px;">
+      <div class="table-scroll"><table id="ytdTable"></table></div>
+    </div>
+
+    <h2>360-Tage-Vergleich <span class="hint">letzte 360 Tage vs. vorherige 360 Tage</span></h2>
+    <div class="card" style="padding-bottom:14px;">
+      <div class="table-scroll"><table id="table360"></table></div>
+    </div>
+
   </div>
   <div class="footer" id="footerInfo"></div>
 </div>
@@ -177,11 +214,10 @@
 const JSON_PATH = "data/solarmanager_daily.json";
 
 const COLORS = {
-  consumption: "#E30613", production: "#2ecc71",
-  gridFrom: "#f5a623", gridTo: "#4a9eff",
-  entfeuchter: "#b06ff0", wasserpumpe: "#4a9eff", ladestation: "#f5a623"
+  consumption: "#E30613", production: "#1f9d55",
+  gridFrom: "#b9770e", gridTo: "#1f6feb",
+  entfeuchter: "#7c3aed", wasserpumpe: "#1f6feb", ladestation: "#b9770e"
 };
-const WEEKDAY_LABELS = ["Mo","Di","Mi","Do","Fr","Sa","So"];
 const MONTH_LABELS = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
 
 let DATA = [];
@@ -229,10 +265,12 @@ function renderAll(){
   renderDailyCharts();
   renderMonthly();
   renderAutarky();
-  renderWeekday();
   renderYearly();
   renderDevices();
   renderTable();
+  renderMonthlyCumulativeTable();
+  renderYtdTable();
+  render360Table();
 }
 
 // ---------- KPIs ----------
@@ -330,7 +368,7 @@ function renderLineChart(containerId, rows, seriesDefs, opts={}){
       ${xLabels}
       <g id="${svgId}_tt" style="display:none;">
         <line class="tooltip-line" x1="0" x2="0" y1="${padT}" y2="${H-padB}"/>
-        <circle r="3.2" fill="#fff"/>
+        <circle r="3.2" fill="#1a1a1a" stroke="#fff" stroke-width="1"/>
       </g>
       <rect id="${svgId}_hit" x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="transparent"/>
     </svg>
@@ -373,13 +411,17 @@ function renderLineChart(containerId, rows, seriesDefs, opts={}){
 // ---------- Reusable SVG grouped/stacked bar chart ----------
 function renderBarChart(containerId, categories, seriesDefs, opts={}){
   const container = document.getElementById(containerId);
-  const W = 880, H = opts.height || 200;
+  const scrollable = !!opts.scrollable;
+  const H = opts.height || 200;
   const padL = 34, padR = 8, padT = 10, padB = 24;
-  const innerW = W - padL - padR, innerH = H - padT - padB;
   const stacked = !!opts.stacked;
 
   const n = categories.length;
   if (n === 0){ container.innerHTML = '<div style="color:var(--text-dim2);font-size:0.8rem;padding:20px 0;">Keine Daten.</div>'; return; }
+
+  const catWidth = opts.catWidth || 40;
+  const W = scrollable ? Math.max(padL + padR + n*catWidth, 880) : 880;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
 
   let maxVal = 0;
   categories.forEach(c => {
@@ -391,6 +433,12 @@ function renderBarChart(containerId, categories, seriesDefs, opts={}){
       seriesDefs.forEach(s => maxVal = Math.max(maxVal, c[s.field]||0));
     }
   });
+  if (opts.lines){
+    opts.lines.forEach(ln => categories.forEach(c => {
+      const v = c[ln.field];
+      if (v !== null && v !== undefined) maxVal = Math.max(maxVal, v);
+    }));
+  }
   maxVal = maxVal <= 0 ? 1 : maxVal * 1.15;
 
   const y = v => padT + innerH - (v/maxVal) * innerH;
@@ -430,11 +478,31 @@ function renderBarChart(containerId, categories, seriesDefs, opts={}){
     }
   });
 
+  let lines = '';
+  if (opts.lines){
+    opts.lines.forEach(ln => {
+      let d = '';
+      categories.forEach((c, i) => {
+        const v = c[ln.field];
+        if (v === null || v === undefined) return;
+        const gx = padL + i*groupW + groupW/2;
+        d += (d === '' ? 'M' : 'L') + gx.toFixed(1) + ',' + y(v).toFixed(1) + ' ';
+      });
+      lines += `<path d="${d}" fill="none" stroke="${ln.color}" stroke-width="1.8" stroke-dasharray="4,3" stroke-linejoin="round"/>`;
+    });
+  }
+
+  const svgWidthStyle = scrollable ? `style="width:${W}px; max-width:none;"` : '';
   container.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
-      ${gridLines}${gridLabels}${bars}${xLabels}
+    <svg viewBox="0 0 ${W} ${H}" ${svgWidthStyle} preserveAspectRatio="xMidYMid meet">
+      ${gridLines}${gridLabels}${bars}${lines}${xLabels}
     </svg>
   `;
+
+  if (scrollable){
+    // Newest categories are rightmost; auto-scroll so they're visible by default.
+    requestAnimationFrame(() => { container.scrollLeft = container.scrollWidth; });
+  }
 }
 
 // ---------- Section renderers ----------
@@ -481,12 +549,30 @@ function monthlyAggregates(){
   return arr;
 }
 
+function movingAverage12(monthly, field){
+  return monthly.map((m, i) => {
+    const win = monthly.slice(Math.max(0, i-11), i+1);
+    return win.reduce((s,x)=> s + (x[field]||0), 0) / win.length;
+  });
+}
+
 function renderMonthly(){
   const monthly = monthlyAggregates();
-  renderBarChart('chartMonthly', monthly, [
+  const maCons = movingAverage12(monthly, 'Consumption_kWh');
+  const maProd = movingAverage12(monthly, 'Production_kWh');
+  const withMA = monthly.map((m, i) => ({
+    ...m, MA_Consumption: maCons[i], MA_Production: maProd[i]
+  }));
+  renderBarChart('chartMonthly', withMA, [
     {field:'Consumption_kWh', color: COLORS.consumption},
     {field:'Production_kWh', color: COLORS.production},
-  ], {height: 210});
+  ], {
+    height: 210, scrollable: true, catWidth: 46,
+    lines: [
+      {field:'MA_Consumption', color:'#8a1a1a'},
+      {field:'MA_Production', color:'#0d5c33'}
+    ]
+  });
 }
 
 function renderAutarky(){
@@ -497,28 +583,7 @@ function renderAutarky(){
   }));
   renderBarChart('chartAutarky', withAutarky, [
     {field:'Autarky', color: COLORS.production}
-  ], {height: 170});
-}
-
-function renderWeekday(){
-  const sums = Array.from({length:7}, () => ({Consumption_kWh:0, Production_kWh:0, n:0}));
-  DATA.forEach(r => {
-    const d = parseISO(r.Date_ISO);
-    let wd = d.getDay(); // 0=Sun..6=Sat
-    wd = (wd + 6) % 7; // shift to 0=Mon..6=Sun
-    sums[wd].Consumption_kWh += r.Consumption_kWh||0;
-    sums[wd].Production_kWh += r.Production_kWh||0;
-    sums[wd].n += 1;
-  });
-  const cats = sums.map((s,i) => ({
-    label: WEEKDAY_LABELS[i],
-    Consumption_kWh: s.n ? s.Consumption_kWh/s.n : 0,
-    Production_kWh: s.n ? s.Production_kWh/s.n : 0,
-  }));
-  renderBarChart('chartWeekday', cats, [
-    {field:'Consumption_kWh', color: COLORS.consumption},
-    {field:'Production_kWh', color: COLORS.production},
-  ], {height: 190});
+  ], {height: 170, scrollable: true, catWidth: 46});
 }
 
 function metricValue(row, metric){
@@ -575,6 +640,114 @@ function renderTable(){
     </tr>
   `).join('');
   document.getElementById('recentTable').innerHTML = head + body;
+}
+
+// ---------- Cumulative tables (monthly / YTD / 360-day) ----------
+const METRIC_COLS = [
+  {key:'total', label:'Verbr. Total'},
+  {key:'other', label:'Other'},
+  {key:'ladestation', label:'Ladestation'},
+  {key:'entfeuchter', label:'Entfeuchter'},
+  {key:'wasserpumpe', label:'Wasserpumpe'},
+  {key:'production', label:'Produktion'},
+  {key:'toGrid', label:'toGrid'},
+  {key:'fromGrid', label:'fromGrid'},
+  {key:'eigen', label:'Eigenverbr.', percent:true},
+];
+
+function metricsFromSums(s){
+  const other = s.total - s.ladestation - s.entfeuchter - s.wasserpumpe;
+  const eigen = s.production > 0 ? (1 - s.toGrid/s.production) * 100 : null;
+  return { ...s, other, eigen };
+}
+
+function aggregateMetrics(rows){
+  return metricsFromSums({
+    total: sumRange(rows, 'Consumption_kWh'),
+    ladestation: sumRange(rows, 'Ladestation_kWh'),
+    entfeuchter: sumRange(rows, 'Entfeuchter_Waschen_kWh'),
+    wasserpumpe: sumRange(rows, 'Wasserpumpe_kWh'),
+    production: sumRange(rows, 'Production_kWh'),
+    toGrid: sumRange(rows, 'GridTo_kWh'),
+    fromGrid: sumRange(rows, 'GridFrom_kWh'),
+  });
+}
+
+function metricsFromMonthlyAgg(m){
+  return metricsFromSums({
+    total: m.Consumption_kWh,
+    ladestation: m.Ladestation_kWh,
+    entfeuchter: m.Entfeuchter_Waschen_kWh,
+    wasserpumpe: m.Wasserpumpe_kWh,
+    production: m.Production_kWh,
+    toGrid: m.GridTo_kWh,
+    fromGrid: m.GridFrom_kWh,
+  });
+}
+
+function cellVal(metrics, col){
+  const v = metrics[col.key];
+  if (v === null || v === undefined) return '–';
+  return col.percent ? `${fmt(v,1)}%` : fmt(v,0);
+}
+
+function renderMonthlyCumulativeTable(){
+  const monthly = monthlyAggregates().slice().reverse(); // newest first
+  const head = `<tr><th>Monat/Jahr</th>${METRIC_COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr>`;
+  const body = monthly.map(m => {
+    const metrics = metricsFromMonthlyAgg(m);
+    return `<tr><td>${m.label}</td>${METRIC_COLS.map(c=>`<td>${cellVal(metrics,c)}</td>`).join('')}</tr>`;
+  }).join('');
+  document.getElementById('monthlyCumTable').innerHTML = head + body;
+}
+
+function rowHtml(label, metrics){
+  return `<tr><td>${label}</td>${METRIC_COLS.map(c=>`<td>${cellVal(metrics,c)}</td>`).join('')}</tr>`;
+}
+
+function deltaRowHtml(mCurrent, mPrior){
+  const cells = METRIC_COLS.map(c => {
+    const a = mCurrent[c.key], b = mPrior[c.key];
+    if (a === null || a === undefined || b === null || b === undefined){
+      return `<td>–</td>`;
+    }
+    if (c.percent){
+      const diff = a - b;
+      return `<td>${diff>=0?'+':''}${fmt(diff,1)} pp</td>`;
+    }
+    const diff = a - b;
+    const pct = b !== 0 ? (diff/b*100) : null;
+    return `<td>${diff>=0?'+':''}${fmt(diff,0)}<br><span style="color:var(--text-dim);font-size:0.65rem;">${pct!==null ? (pct>=0?'+':'')+fmt(pct,1)+'%' : '–'}</span></td>`;
+  }).join('');
+  return `<tr><td>Veränderung</td>${cells}</tr>`;
+}
+
+function renderComparisonTable(containerId, rowsCurrent, rowsPrior, labelCurrent, labelPrior){
+  const mCurrent = aggregateMetrics(rowsCurrent);
+  const mPrior = aggregateMetrics(rowsPrior);
+  const head = `<tr><th>Periode</th>${METRIC_COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr>`;
+  const body = rowHtml(labelCurrent, mCurrent) + rowHtml(labelPrior, mPrior) + deltaRowHtml(mCurrent, mPrior);
+  document.getElementById(containerId).innerHTML = head + body;
+}
+
+function renderYtdTable(){
+  if (DATA.length === 0) return;
+  const latest = parseISO(DATA[DATA.length-1].Date_ISO);
+  const year = latest.getFullYear();
+  const janFirstThis = new Date(year, 0, 1);
+  const janFirstPrev = new Date(year-1, 0, 1);
+  const sameDayPrevYear = new Date(year-1, latest.getMonth(), latest.getDate());
+
+  const ytdRows = DATA.filter(r => { const d = parseISO(r.Date_ISO); return d >= janFirstThis && d <= latest; });
+  const pytdRows = DATA.filter(r => { const d = parseISO(r.Date_ISO); return d >= janFirstPrev && d <= sameDayPrevYear; });
+
+  renderComparisonTable('ytdTable', ytdRows, pytdRows, `YTD ${year}`, `PYTD ${year-1}`);
+}
+
+function render360Table(){
+  const last360 = DATA.slice(-360);
+  const prior360 = DATA.slice(-720, -360);
+  renderComparisonTable('table360', last360, prior360, '360 Tage', 'Prior 360 Tage');
 }
 
 // ---------- Range tabs ----------
