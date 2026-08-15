@@ -206,6 +206,11 @@
       <div class="table-scroll"><table id="table360"></table></div>
     </div>
 
+    <h2>Jahresvergleich <span class="hint">alle Jahre, ohne Veränderung</span></h2>
+    <div class="card" style="padding-bottom:14px;">
+      <div class="table-scroll"><table id="yearlyTable"></table></div>
+    </div>
+
   </div>
   <div class="footer" id="footerInfo"></div>
 </div>
@@ -271,6 +276,7 @@ function renderAll(){
   renderMonthlyCumulativeTable();
   renderYtdTable();
   render360Table();
+  renderYearlyTable();
 }
 
 // ---------- KPIs ----------
@@ -748,6 +754,17 @@ function render360Table(){
   const last360 = DATA.slice(-360);
   const prior360 = DATA.slice(-720, -360);
   renderComparisonTable('table360', last360, prior360, '360 Tage', 'Prior 360 Tage');
+}
+
+function renderYearlyTable(){
+  const years = [...new Set(DATA.map(r => r.Date_ISO.slice(0,4)))].sort().reverse(); // newest first
+  const head = `<tr><th>Jahr</th>${METRIC_COLS.map(c=>`<th>${c.label}</th>`).join('')}</tr>`;
+  const body = years.map(y => {
+    const rows = DATA.filter(r => r.Date_ISO.slice(0,4) === y);
+    const metrics = aggregateMetrics(rows);
+    return rowHtml(y, metrics);
+  }).join('');
+  document.getElementById('yearlyTable').innerHTML = head + body;
 }
 
 // ---------- Range tabs ----------
