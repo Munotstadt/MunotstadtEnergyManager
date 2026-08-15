@@ -9,57 +9,79 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#101014; --panel:#17171d; --panel-2:#1e1e26; --border:#2a2a33;
-    --text:#f2f2f4; --text-dim:#9a9aa5; --accent:#E30613; --ok:#2ecc71; --warn:#f5a623;
+    --red:#E30613;
+    --ink:#1a1a1a;
+    --grey-900:#2b2b2b;
+    --grey-600:#666;
+    --grey-300:#d8d8d8;
+    --grey-100:#f4f4f4;
+    --bg:#ffffff;
+    --radius:6px;
+    --accent:#E30613; --ok:#1f9d55; --warn:#b9770e;
   }
   *{box-sizing:border-box;}
   body{
-    margin:0; background:var(--bg); color:var(--text);
-    font-family:'Inter',sans-serif; padding:24px 16px 64px; min-height:100vh;
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:15px; line-height:1.45; min-height:100vh;
   }
-  .wrap{max-width:560px; margin:0 auto;}
-  h1{
-    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.5rem;
-    margin:0 0 4px;
+  header.topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; border-bottom:2px solid var(--ink);
   }
-  .sub{color:var(--text-dim); font-size:0.9rem; margin-bottom:28px;}
+  header.topbar .brand{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px;}
+  header.topbar .brand span{color:var(--red);}
+  header.topbar .back-link{
+    text-decoration:none; color:var(--ink); font-size:13px; font-weight:500;
+    padding:7px 12px; border-radius:var(--radius); white-space:nowrap;
+  }
+  header.topbar .back-link:hover{background:var(--grey-100);}
+
+  .wrap{max-width:560px; margin:0 auto; padding:24px 20px 60px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1.4rem; margin:0 0 4px;}
+  .sub{color:var(--grey-600); font-size:0.85rem; margin-bottom:24px;}
   .card{
-    background:var(--panel); border:1px solid var(--border); border-radius:12px;
-    padding:20px; margin-bottom:16px;
+    border:1px solid var(--grey-300); border-radius:var(--radius);
+    padding:16px 18px; background:var(--bg); margin-bottom:14px;
   }
   label{
-    display:block; font-size:0.8rem; text-transform:uppercase; letter-spacing:.04em;
-    color:var(--text-dim); margin-bottom:6px; font-weight:600;
+    display:block; font-size:12px; font-weight:500;
+    color:var(--grey-600); margin-bottom:4px;
   }
   input[type=password], input[type=text]{
-    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
-    padding:11px 12px; border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:0.9rem;
+    width:100%; padding:8px 10px; border:1px solid var(--grey-300); border-radius:var(--radius);
+    font-family:'IBM Plex Mono',monospace; font-size:14px; background:var(--bg); color:var(--ink);
   }
+  input[type=password]:focus, input[type=text]:focus{outline:2px solid var(--red); outline-offset:1px;}
   input[type=file]{
-    width:100%; color:var(--text-dim); font-size:0.85rem; margin-top:4px;
+    width:100%; color:var(--grey-600); font-size:0.85rem; margin-top:4px; font-family:'Inter',sans-serif;
   }
   .row{display:flex; align-items:center; gap:8px; margin-top:10px;}
   .row input[type=checkbox]{width:16px; height:16px;}
-  .row label{margin:0; text-transform:none; letter-spacing:0; color:var(--text-dim); font-weight:400; font-size:0.85rem;}
+  .row label{margin:0; color:var(--grey-600); font-weight:400; font-size:0.85rem;}
   button{
-    width:100%; background:var(--accent); color:#fff; border:none; border-radius:8px;
-    padding:14px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem;
-    margin-top:8px; cursor:pointer;
+    width:100%; font-family:'Inter',sans-serif; font-weight:600; font-size:14px;
+    padding:11px 14px; border-radius:var(--radius); border:1px solid var(--ink);
+    background:var(--ink); color:#fff; cursor:pointer; margin-top:4px;
   }
-  button:disabled{opacity:.5;}
+  button:hover{opacity:.85;}
+  button:disabled{opacity:.5; cursor:default;}
   #status{
-    margin-top:16px; font-family:'IBM Plex Mono',monospace; font-size:0.85rem;
+    margin-top:14px; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;
     white-space:pre-wrap; word-break:break-word;
   }
   .ok{color:var(--ok);}
   .err{color:var(--accent);}
   .warn{color:var(--warn);}
-  .filename{font-family:'IBM Plex Mono',monospace; color:var(--text-dim); font-size:0.85rem; margin-top:6px;}
-  .footer{color:var(--text-dim); font-size:0.75rem; margin-top:24px; text-align:center;}
+  .filename{font-family:'IBM Plex Mono',monospace; color:var(--grey-600); font-size:0.82rem; margin-top:6px;}
+  .footer{color:var(--grey-600); font-size:0.75rem; margin-top:24px; text-align:center;}
   a{color:var(--accent);}
 </style>
 </head>
 <body>
+<header class="topbar">
+  <div class="brand">Munotstadt <span>Energy</span></div>
+  <a href="index.html" class="back-link">&larr; Dashboard</a>
+</header>
 <div class="wrap">
   <h1>Solarmanager Upload</h1>
   <div class="sub">EKZ Export hochladen &middot; wird automatisch zu Tageswerten aggregiert</div>
@@ -83,7 +105,6 @@
   <div id="status"></div>
 
   <div class="footer">
-    <a href="index.html">&larr; Zurück zum Dashboard</a><br><br>
     Repo: <a href="https://github.com/Munotstadt/Munotstadt_EnergyManager" target="_blank">Munotstadt/Munotstadt_EnergyManager</a><br>
     Nach dem Upload läuft die Verarbeitung automatisch per GitHub Actions (ca. 1&ndash;2 Min).
   </div>
