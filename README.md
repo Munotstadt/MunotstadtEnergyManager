@@ -41,6 +41,14 @@ Settings → Secrets and variables → Actions:
 - Dieses Token wird auf der Upload-Seite selbst eingegeben (optional lokal
   im Browser gespeichert) — es liegt nie im Repo.
 
+### 5. Read-only Token fürs Dashboard
+- Lese-Token erzeugen: `turso db tokens create munotstadtenergydb --read-only --expiration never`
+  (oder via Turso Dashboard, Scope "read-only").
+- Diesen Token in `index.html` bei der Konstante `TURSO_READONLY_TOKEN`
+  eintragen und committen. Er landet damit sichtbar im öffentlichen Repo und
+  im Browser-Quelltext — das ist bei einem reinen Lese-Token unkritisch,
+  **niemals** den Schreib-Token aus Schritt 3 hier eintragen.
+
 ## Nutzung
 
 `https://munotstadt.github.io/Munotstadt_EnergyManager/` (Dashboard, Startseite) bzw. `.../solarmanageruploader.html` (Upload) öffnen, Token
@@ -49,8 +57,8 @@ läuft automatisch (ca. 1–2 Minuten), Status unter dem Actions-Tab des Repos.
 
 ## Dashboards
 
-`index.html` (Startseite, GitHub Pages) visualisiert
-`data/solarmanager_daily.json`:
+`index.html` (Startseite, GitHub Pages) visualisiert die Daten aus
+`solarmanager_data`:
 
 - KPI-Kacheln: Verbrauch/Produktion letzte 7 Tage, Autarkiegrad (30 Tage), Total
 - Tagesverlauf Verbrauch/Produktion mit Zeitraum-Umschaltung (30/90/365 Tage/Alles)
@@ -61,10 +69,33 @@ läuft automatisch (ca. 1–2 Minuten), Status unter dem Actions-Tab des Repos.
 - Gerätenutzung pro Monat (Entfeuchter, Wasserpumpe, Ladestation, gestapelt)
 - Tabelle letzte 14 Tage
 
-Das Dashboard liest ausschliesslich das statische JSON — kein Turso-Zugriff
-und kein Token im Browser nötig. `data/solarmanager_daily.json` wird bei
-jedem Workflow-Lauf frisch aus der DB exportiert (auch wenn keine neue CSV
-vorliegt, z.B. bei manuellem "Run workflow").
+### Datenquelle: live von Turso, mit lokalem Cache
+
+Das Dashboard fragt `solarmanager_data` direkt per HTTP über einen
+**Lese-Token** aus Turso ab (`TURSO_HTTP_URL` / `TURSO_READONLY_TOKEN` in
+`index.html`). Der Token steht bewusst im Client-Code — GitHub Pages ist rein
+statisch, es gibt keinen Server, der ihn verstecken könnte. Deshalb **darf
+dieser Token ausschliesslich Leserechte haben**:
+
+```bash
+turso db tokens create munotstadtenergydb --read-only --expiration never
+```
+
+(Der Schreib-Token aus den GitHub Secrets bleibt davon unberührt und landet
+nie im Browser.)
+
+Um Ladezeit und DB-Last zu reduzieren, cached das Dashboard die Antwort in
+`localStorage` (`munotstadt_solarmanager_cache_v1`, 15 Minuten TTL,
+stale-while-revalidate): Beim Öffnen werden zuerst die zuletzt bekannten
+Daten sofort angezeigt, im Hintergrund wird bei Ablauf der TTL neu von Turso
+geladen und der Cache aktualisiert. Der Footer zeigt an, ob die Daten "live
+von Turso", "aus Cache" oder als "statischer Export" (Fallback) stammen.
+
+Falls Turso nicht erreichbar ist (Netzwerk/CORS/Token-Problem), fällt das
+Dashboard auf `data/solarmanager_daily.json` zurück. Dieses JSON wird
+weiterhin bei jedem Workflow-Lauf frisch aus der DB exportiert (auch ohne
+neue CSV, z.B. bei manuellem "Run workflow") und dient so als Offline-/
+Notfall-Kopie der Daten.
 
 
 
