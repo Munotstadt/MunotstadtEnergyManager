@@ -1,0 +1,46 @@
+name: Process Kostal Upload
+
+on:
+  push:
+    paths:
+      - 'uploads_kostal/**.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kostal-processing
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Process uploads
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: python scripts/process_kostal.py
+
+      - name: Commit processed state
+        run: |
+          git config user.name "kostal-bot"
+          git config user.email "bot@munotstadt.local"
+          mkdir -p uploads_kostal processed_kostal logs
+          touch uploads_kostal/.gitkeep processed_kostal/.gitkeep logs/.gitkeep
+          git add uploads_kostal processed_kostal logs
+          git diff --staged --quiet || git commit -m "Process Kostal upload $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git pull --rebase --autostash
+          git push
