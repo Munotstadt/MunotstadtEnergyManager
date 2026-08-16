@@ -1,3 +1,6 @@
 [16.08.2026 07:01:14] Verarbeite uploads_kostal/20260816_070050_chart__12_.csv ...
 [16.08.2026 07:01:24]   -> 93 Tag(e) geschrieben (2023-12-01 - 2025-12-31)
 [16.08.2026 07:01:24] Fertig. 1 Datei(en) verarbeitet, 93 Tageswerte upserted.
+[16.08.2026 07:04:25] Verarbeite uploads_kostal/20260816_070400_chart__11_.csv ...
+[16.08.2026 07:04:34]   -> 90 Tag(e) geschrieben (2023-11-01 - 2025-11-30)
+[16.08.2026 07:04:34] Fertig. 1 Datei(en) verarbeitet, 90 Tageswerte upserted.
