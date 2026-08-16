@@ -81,9 +81,20 @@ def parse_datetime_cell(raw):
     return month, day
 
 
-def load_kostal_csv(csv_path):
+def load_kostal_csv(csv_path, today=None):
     """Liest eine Kostal-CSV (Semikolon, Dezimalkomma) und liefert eine Liste
-    von dicts {Date_ISO, Date_Display, Energy_Wh}."""
+    von dicts {Date_ISO, Date_Display, Energy_Wh}.
+
+    Es werden nur ABGESCHLOSSENE Tage übernommen (Datum < heute, Europe/Zurich).
+    Der heutige/laufende Tag und Datumswerte in der Zukunft werden verworfen,
+    da deren Tagesertrag noch nicht final ist (Wechselrichter misst tagsüber
+    weiter) - ein Upload würde sonst einen unvollständigen Wert festschreiben,
+    der beim nächsten Re-Upload zwar überschrieben werden könnte, bis dahin
+    aber falsch im Dashboard stünde.
+    """
+    if today is None:
+        today = now_zurich().date()
+
     df = pd.read_csv(csv_path, sep=";", decimal=",", quotechar='"', encoding="utf-8-sig")
     df.columns = [str(c).strip() for c in df.columns]
 
@@ -97,6 +108,7 @@ def load_kostal_csv(csv_path):
     rows = {}
     skipped_rows = 0
     skipped_cells = 0
+    skipped_not_final = 0
 
     for _, r in df.iterrows():
         parsed = parse_datetime_cell(r["DateTime"])
@@ -117,6 +129,12 @@ def load_kostal_csv(csv_path):
                 skipped_cells += 1
                 continue
 
+            if d >= today:
+                # Heutiger/laufender Tag oder Zukunft - Tageswert noch nicht
+                # abgeschlossen, wird nicht importiert.
+                skipped_not_final += 1
+                continue
+
             date_iso = d.isoformat()
             rows[date_iso] = {
                 "Date_ISO": date_iso,
@@ -128,6 +146,9 @@ def load_kostal_csv(csv_path):
         log(f"  {os.path.basename(csv_path)}: {skipped_rows} Zeile(n) ohne gültiges DateTime-Format ignoriert.")
     if skipped_cells:
         log(f"  {os.path.basename(csv_path)}: {skipped_cells} Zelle(n) mit ungültigem Kalenderdatum ignoriert.")
+    if skipped_not_final:
+        log(f"  {os.path.basename(csv_path)}: {skipped_not_final} Zelle(n) mit nicht abgeschlossenem Datum "
+            f"(heute {today.isoformat()} oder Zukunft) übersprungen.")
 
     return list(rows.values())
 
