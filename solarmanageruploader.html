@@ -39,6 +39,12 @@
   .wrap{max-width:560px; margin:0 auto; padding:24px 20px 60px;}
   h1{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1.4rem; margin:0 0 4px;}
   .sub{color:var(--grey-600); font-size:0.85rem; margin-bottom:24px;}
+  section.source{margin-bottom:32px;}
+  section.source h2{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1.05rem;
+    margin:0 0 3px;
+  }
+  section.source .source-sub{color:var(--grey-600); font-size:0.82rem; margin-bottom:12px;}
   .card{
     border:1px solid var(--grey-300); border-radius:var(--radius);
     padding:16px 18px; background:var(--bg); margin-bottom:14px;
@@ -65,7 +71,7 @@
   }
   button:hover{opacity:.85;}
   button:disabled{opacity:.5; cursor:default;}
-  #status{
+  .status{
     margin-top:14px; font-family:'IBM Plex Mono',monospace; font-size:0.82rem;
     white-space:pre-wrap; word-break:break-word;
   }
@@ -83,8 +89,8 @@
   <a href="index.html" class="back-link">&larr; Dashboard</a>
 </header>
 <div class="wrap">
-  <h1>Solarmanager Upload</h1>
-  <div class="sub">EKZ Export hochladen &middot; wird automatisch zu Tageswerten aggregiert</div>
+  <h1>Energie-Daten Upload</h1>
+  <div class="sub">CSV-Exports hochladen &middot; wird automatisch verarbeitet und in Turso gespeichert</div>
 
   <div class="card">
     <label for="pat">GitHub Personal Access Token</label>
@@ -93,20 +99,37 @@
       <input type="checkbox" id="remember">
       <label for="remember">Token in diesem Browser merken</label>
     </div>
+    <div class="filename" style="margin-top:8px;">Wird für beide Uploads unten verwendet.</div>
   </div>
 
-  <div class="card">
-    <label for="file">EKZ Solarmanager CSV</label>
-    <input type="file" id="file" accept=".csv,text/csv">
-    <div class="filename" id="filename"></div>
-  </div>
+  <section class="source" id="section-solarmanager">
+    <h2>1. Solarmanager (EKZ)</h2>
+    <div class="source-sub">EKZ-Export &middot; wird zu Tageswerten aggregiert &middot; Tabelle <code>solarmanager_data</code></div>
+    <div class="card">
+      <label for="file-solarmanager">EKZ Solarmanager CSV</label>
+      <input type="file" id="file-solarmanager" accept=".csv,text/csv">
+      <div class="filename" id="filename-solarmanager"></div>
+    </div>
+    <button id="btn-solarmanager">Hochladen &amp; verarbeiten</button>
+    <div class="status" id="status-solarmanager"></div>
+  </section>
 
-  <button id="uploadBtn">Hochladen &amp; verarbeiten</button>
-  <div id="status"></div>
+  <section class="source" id="section-kostal">
+    <h2>2. Kostal (Wechselrichter-Ertrag)</h2>
+    <div class="source-sub">Export aus dem Kostal-Portal (Tagesertrag pro Jahr) &middot; Tabelle <code>kostal_data</code> &middot; Format: Semikolon-getrennt, z.B. <code>"DateTime";"2024 [Wh]";"2025 [Wh]";"2026 [Wh]"</code></div>
+    <div class="card">
+      <label for="file-kostal">Kostal CSV</label>
+      <input type="file" id="file-kostal" accept=".csv,text/csv">
+      <div class="filename" id="filename-kostal"></div>
+    </div>
+    <button id="btn-kostal">Hochladen &amp; verarbeiten</button>
+    <div class="status" id="status-kostal"></div>
+  </section>
 
   <div class="footer">
     Repo: <a href="https://github.com/Munotstadt/Munotstadt_EnergyManager" target="_blank">Munotstadt/Munotstadt_EnergyManager</a><br>
-    Nach dem Upload läuft die Verarbeitung automatisch per GitHub Actions (ca. 1&ndash;2 Min).
+    Nach dem Upload läuft die Verarbeitung automatisch per GitHub Actions (ca. 1&ndash;2 Min).<br>
+    Mehrfaches Hochladen derselben Tage ist unkritisch &ndash; bestehende Einträge werden überschrieben, es entstehen keine Duplikate.
   </div>
 </div>
 
@@ -117,10 +140,6 @@ const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents`;
 
 const patInput = document.getElementById('pat');
 const rememberBox = document.getElementById('remember');
-const fileInput = document.getElementById('file');
-const filenameEl = document.getElementById('filename');
-const statusEl = document.getElementById('status');
-const btn = document.getElementById('uploadBtn');
 
 // Gespeichertes Token laden
 const saved = localStorage.getItem('solarmanager_pat');
@@ -130,15 +149,7 @@ rememberBox.addEventListener('change', () => {
   if (!rememberBox.checked) localStorage.removeItem('solarmanager_pat');
 });
 
-fileInput.addEventListener('change', () => {
-  const f = fileInput.files[0];
-  filenameEl.textContent = f ? `${f.name} (${(f.size/1024).toFixed(1)} KB)` : '';
-});
-
-function setStatus(msg, cls) {
-  statusEl.textContent = msg;
-  statusEl.className = cls || '';
-}
+function pad(n){ return String(n).padStart(2,'0'); }
 
 function toBase64(file) {
   return new Promise((resolve, reject) => {
@@ -149,58 +160,85 @@ function toBase64(file) {
   });
 }
 
-function pad(n){ return String(n).padStart(2,'0'); }
+function setupUploader({ fileInputId, filenameId, buttonId, statusId, targetFolder, commitLabel }) {
+  const fileInput = document.getElementById(fileInputId);
+  const filenameEl = document.getElementById(filenameId);
+  const statusEl = document.getElementById(statusId);
+  const btn = document.getElementById(buttonId);
 
-btn.addEventListener('click', async () => {
-  const token = patInput.value.trim();
-  const file = fileInput.files[0];
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files[0];
+    filenameEl.textContent = f ? `${f.name} (${(f.size/1024).toFixed(1)} KB)` : '';
+  });
 
-  if (!token) { setStatus('Bitte GitHub Token eingeben.', 'err'); return; }
-  if (!file) { setStatus('Bitte zuerst eine CSV-Datei auswählen.', 'err'); return; }
-  if (!file.name.toLowerCase().endsWith('.csv')) { setStatus('Nur .csv Dateien werden unterstützt.', 'err'); return; }
-
-  if (rememberBox.checked) localStorage.setItem('solarmanager_pat', token);
-
-  btn.disabled = true;
-  setStatus('Lese Datei...', 'warn');
-
-  try {
-    const b64 = await toBase64(file);
-    const now = new Date();
-    const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `uploads/${stamp}_${safeName}`;
-
-    setStatus('Lade zu GitHub hoch...', 'warn');
-
-    const res = await fetch(`${API}/${encodeURIComponent(path)}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json'
-      },
-      body: JSON.stringify({
-        message: `Solarmanager Upload: ${safeName}`,
-        content: b64
-      })
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(`GitHub API ${res.status}: ${err.message || 'Unbekannter Fehler'}`);
-    }
-
-    setStatus(
-      `Upload erfolgreich!\nDatei: ${path}\n\nDie Verarbeitung startet automatisch (GitHub Actions).\nStatus: https://github.com/${OWNER}/${REPO}/actions`,
-      'ok'
-    );
-    fileInput.value = '';
-    filenameEl.textContent = '';
-  } catch (e) {
-    setStatus(`Fehler: ${e.message}`, 'err');
-  } finally {
-    btn.disabled = false;
+  function setStatus(msg, cls) {
+    statusEl.textContent = msg;
+    statusEl.className = 'status' + (cls ? ' ' + cls : '');
   }
+
+  btn.addEventListener('click', async () => {
+    const token = patInput.value.trim();
+    const file = fileInput.files[0];
+
+    if (!token) { setStatus('Bitte GitHub Token eingeben.', 'err'); return; }
+    if (!file) { setStatus('Bitte zuerst eine CSV-Datei auswählen.', 'err'); return; }
+    if (!file.name.toLowerCase().endsWith('.csv')) { setStatus('Nur .csv Dateien werden unterstützt.', 'err'); return; }
+
+    if (rememberBox.checked) localStorage.setItem('solarmanager_pat', token);
+
+    btn.disabled = true;
+    setStatus('Lese Datei...', 'warn');
+
+    try {
+      const b64 = await toBase64(file);
+      const now = new Date();
+      const stamp = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${targetFolder}/${stamp}_${safeName}`;
+
+      setStatus('Lade zu GitHub hoch...', 'warn');
+
+      const res = await fetch(`${API}/${encodeURIComponent(path)}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json'
+        },
+        body: JSON.stringify({
+          message: `${commitLabel}: ${safeName}`,
+          content: b64
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`GitHub API ${res.status}: ${err.message || 'Unbekannter Fehler'}`);
+      }
+
+      setStatus(
+        `Upload erfolgreich!\nDatei: ${path}\n\nDie Verarbeitung startet automatisch (GitHub Actions).\nStatus: https://github.com/${OWNER}/${REPO}/actions`,
+        'ok'
+      );
+      fileInput.value = '';
+      filenameEl.textContent = '';
+    } catch (e) {
+      setStatus(`Fehler: ${e.message}`, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+setupUploader({
+  fileInputId: 'file-solarmanager', filenameId: 'filename-solarmanager',
+  buttonId: 'btn-solarmanager', statusId: 'status-solarmanager',
+  targetFolder: 'uploads', commitLabel: 'Solarmanager Upload'
+});
+
+setupUploader({
+  fileInputId: 'file-kostal', filenameId: 'filename-kostal',
+  buttonId: 'btn-kostal', statusId: 'status-kostal',
+  targetFolder: 'uploads_kostal', commitLabel: 'Kostal Upload'
 });
 </script>
 </body>
