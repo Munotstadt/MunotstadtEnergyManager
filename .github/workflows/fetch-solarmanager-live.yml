@@ -1,0 +1,31 @@
+name: Solar Manager Live -> Turso
+
+on:
+  schedule:
+    # alle 10 Minuten (UTC) - bei Bedarf anpassen
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependencies installieren
+        run: pip install -r scripts/requirements-solarmanager-live.txt
+
+      - name: Solar Manager Live-Datenpunkt abrufen und speichern
+        env:
+          SM_EMAIL: ${{ secrets.SM_EMAIL }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_GATEWAY_ID: ${{ secrets.SM_GATEWAY_ID }}
+          SM_BASE_URL: ${{ vars.SM_BASE_URL }}
+          SM_POINT_PATH: ${{ vars.SM_POINT_PATH }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: python scripts/fetch_solarmanager_live.py
