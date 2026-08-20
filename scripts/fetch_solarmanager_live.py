@@ -29,11 +29,18 @@ import requests
 import libsql_experimental as libsql
 
 
-SM_BASE_URL = os.environ.get("SM_BASE_URL", "https://cloud.solar-manager.ch")
+def _env_or_default(name: str, default: str) -> str:
+    """Wie os.environ.get, behandelt aber leere Strings (z.B. nicht
+    gesetzte GitHub Actions 'vars') ebenfalls als 'nicht gesetzt'."""
+    value = os.environ.get(name)
+    return value if value else default
+
+
+SM_BASE_URL = _env_or_default("SM_BASE_URL", "https://cloud.solar-manager.ch")
 SM_EMAIL = os.environ["SM_EMAIL"]
 SM_API_KEY = os.environ["SM_API_KEY"]
 SM_GATEWAY_ID = os.environ["SM_GATEWAY_ID"]
-SM_POINT_PATH = os.environ.get(
+SM_POINT_PATH = _env_or_default(
     "SM_POINT_PATH", "/v1/stream/gateway/{gateway_id}"
 ).format(gateway_id=SM_GATEWAY_ID)
 
