@@ -1,20 +1,18 @@
 """
-Solar Manager CLOUD API -> Turso
+Solar Manager CLOUD API -> Turso (Tagesstatistik Vortag)
 
-Fragt den aktuellen Datenpunkt von der Solar Manager Cloud API
-(https://cloud.solar-manager.ch/) ab und speichert ihn in einer
-Turso-Datenbank (libSQL).
+Holt einmal taeglich (morgens) die aggregierten Statistikwerte des
+VORTAGS von der Solar Manager Cloud API und speichert sie in Turso.
 
-Auth: Basic Auth mit base64("email:api-key"), wie von Solar Manager
-vorgesehen (Variante 4 aus deren Doku). Bestätigt funktionierend
-gegen den Endpunkt /v1/stream/gateway/{gateway_id}.
+Endpunkt: GET /v1/statistics/gateways/{smId}?accuracy=day&from=...&to=...
+Liefert fertige Tagessummen: consumption, production, selfConsumption,
+selfConsumptionRate, autarchyDegree -- kein eigenes Aufsummieren noetig.
 
-Benoetigte Umgebungsvariablen (siehe .env.example / GitHub Secrets):
+Benoetigte Umgebungsvariablen (siehe .env.solarmanager-live.example):
     SM_EMAIL          -> Solar Manager Login-E-Mail
     SM_API_KEY        -> Solar Manager Cloud API Key
     SM_GATEWAY_ID       -> Solar Manager Geraete-/Gateway-ID (SM-ID)
     SM_BASE_URL        -> Standard: https://cloud.solar-manager.ch
-    SM_POINT_PATH       -> Standard: /v1/stream/gateway/{gateway_id}
     TURSO_DATABASE_URL     -> z.B. libsql://<db>-<org>.turso.io
     TURSO_AUTH_TOKEN      -> Turso Auth Token
 """
@@ -40,9 +38,6 @@ SM_BASE_URL = _env_or_default("SM_BASE_URL", "https://cloud.solar-manager.ch")
 SM_EMAIL = os.environ["SM_EMAIL"]
 SM_API_KEY = os.environ["SM_API_KEY"]
 SM_GATEWAY_ID = os.environ["SM_GATEWAY_ID"]
-SM_POINT_PATH = _env_or_default(
-    "SM_POINT_PATH", "/v1/stream/gateway/{gateway_id}"
-).format(gateway_id=SM_GATEWAY_ID)
 
 TURSO_DATABASE_URL = os.environ["TURSO_DATABASE_URL"]
 TURSO_AUTH_TOKEN = os.environ["TURSO_AUTH_TOKEN"]
@@ -53,9 +48,22 @@ def basic_auth_header() -> str:
     return "Basic " + base64.b64encode(raw).decode("ascii")
 
 
-def fetch_point() -> dict:
+def yesterday_range_utc():
+    """Liefert (from, to) fuer den gestrigen Kalendertag in UTC,
+    im ISO-Format mit Millisekunden wie von der API erwartet."""
+    today_utc = dt.datetime.now(dt.timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    yesterday_start = today_utc - dt.timedelta(days=1)
+    yesterday_end = today_utc
+    fmt = "%Y-%m-%dT%H:%M:%S.000Z"
+    return yesterday_start.strftime(fmt), yesterday_end.strftime(fmt), yesterday_start.date()
+
+
+def fetch_daily_stats(from_iso: str, to_iso: str) -> dict:
     resp = requests.get(
-        f"{SM_BASE_URL}{SM_POINT_PATH}",
+        f"{SM_BASE_URL}/v1/statistics/gateways/{SM_GATEWAY_ID}",
+        params={"accuracy": "day", "from": from_iso, "to": to_iso},
         headers={
             "accept": "application/json",
             "authorization": basic_auth_header(),
@@ -69,31 +77,15 @@ def fetch_point() -> dict:
 def ensure_schema(conn):
     conn.execute(
         """
-        CREATE TABLE IF NOT EXISTS solarmanager_live_points (
+        CREATE TABLE IF NOT EXISTS solarmanager_daily_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fetched_at TEXT NOT NULL,
-            timestamp TEXT,
-            interface_version INTEGER,
-            interval_secs INTEGER,
-            current_battery_charge_discharge REAL,
-            current_grid_power REAL,
-            current_power_consumption REAL,
-            current_pv_generation REAL,
-            raw_json TEXT
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS solarmanager_live_devices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fetched_at TEXT NOT NULL,
-            device_id TEXT,
-            signal TEXT,
-            current_power REAL,
-            soc INTEGER,
-            e_wh REAL,
-            i_wh REAL,
+            stat_date TEXT NOT NULL UNIQUE,
+            consumption_wh REAL,
+            production_wh REAL,
+            self_consumption_wh REAL,
+            self_consumption_rate REAL,
+            autarchy_degree REAL,
             raw_json TEXT
         )
         """
@@ -101,60 +93,48 @@ def ensure_schema(conn):
     conn.commit()
 
 
-def store_point(conn, point: dict):
+def store_daily_stats(conn, stat_date: str, stats: dict):
     now = dt.datetime.utcnow().isoformat()
     conn.execute(
         """
-        INSERT INTO solarmanager_live_points
-        (fetched_at, timestamp, interface_version, interval_secs,
-         current_battery_charge_discharge, current_grid_power,
-         current_power_consumption, current_pv_generation, raw_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO solarmanager_daily_stats
+        (fetched_at, stat_date, consumption_wh, production_wh,
+         self_consumption_wh, self_consumption_rate, autarchy_degree, raw_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(stat_date) DO UPDATE SET
+            fetched_at = excluded.fetched_at,
+            consumption_wh = excluded.consumption_wh,
+            production_wh = excluded.production_wh,
+            self_consumption_wh = excluded.self_consumption_wh,
+            self_consumption_rate = excluded.self_consumption_rate,
+            autarchy_degree = excluded.autarchy_degree,
+            raw_json = excluded.raw_json
         """,
         (
             now,
-            point.get("TimeStamp"),
-            point.get("Interface Version"),
-            point.get("intervalSecs"),
-            point.get("currentBatteryChargeDischarge"),
-            point.get("currentGridPower"),
-            point.get("currentPowerConsumption"),
-            point.get("currentPvGeneration"),
-            json.dumps(point),
+            stat_date,
+            stats.get("consumption"),
+            stats.get("production"),
+            stats.get("selfConsumption"),
+            stats.get("selfConsumptionRate"),
+            stats.get("autarchyDegree"),
+            json.dumps(stats),
         ),
     )
-
-    devices = point.get("devices") or []
-    if isinstance(devices, list):
-        for device in devices:
-            conn.execute(
-                """
-                INSERT INTO solarmanager_live_devices
-                (fetched_at, device_id, signal, current_power, soc, e_wh, i_wh, raw_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    now,
-                    device.get("_id"),
-                    device.get("signal"),
-                    device.get("currentPower") or device.get("currentPowerInvSm"),
-                    device.get("soc"),
-                    device.get("eWh"),
-                    device.get("iWh"),
-                    json.dumps(device),
-                ),
-            )
     conn.commit()
 
 
 def main():
-    point = fetch_point()
-    print("Datenpunkt erhalten:", json.dumps(point)[:300], "...")
+    from_iso, to_iso, stat_date = yesterday_range_utc()
+    print(f"Hole Tagesstatistik fuer {stat_date} ({from_iso} bis {to_iso})")
+
+    stats = fetch_daily_stats(from_iso, to_iso)
+    print("Tagesstatistik erhalten:", json.dumps(stats))
 
     conn = libsql.connect(TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
     ensure_schema(conn)
-    store_point(conn, point)
-    print("Datenpunkt in Turso gespeichert.")
+    store_daily_stats(conn, stat_date.isoformat(), stats)
+    print("Tagesstatistik in Turso gespeichert.")
 
 
 if __name__ == "__main__":
