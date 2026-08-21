@@ -50,8 +50,8 @@
   }
   h2 .hint{color:var(--text-dim); font-weight:400; font-size:0.78rem; margin-left:6px;}
 
-  .kpi-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:8px;}
-  @media(min-width:600px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+  .kpi-grid{display:grid; grid-template-columns:repeat(1,1fr); gap:14px; margin-bottom:8px;}
+  @media(min-width:480px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
   .kpi{
     background:var(--bg); border:1px solid var(--grey-300); border-radius:var(--radius);
     padding:14px 16px 12px;
@@ -115,7 +115,7 @@
     <h1>Energy Dashboard</h1>
     <div class="sub" id="subline">Lade Daten...</div>
   </div>
-  <div id="status">Lade Daten...</div>
+  <div id="status">Lade solarmanager_daily.json...</div>
   <div id="content" style="display:none;">
 
     <div class="kpi-grid" id="kpiGrid"></div>
@@ -216,103 +216,7 @@
 </div>
 
 <script>
-// ---------- Turso (read-only, direkt aus dem Browser) + lokaler Cache ----------
-// Das Dashboard fragt die Daten live aus Turso ab (Lese-Token, keine
-// Schreibrechte) statt nur das bei jedem Actions-Lauf exportierte
-// data/solarmanager_daily.json zu lesen. Der Token ist absichtlich hier im
-// Client-Code sichtbar (GitHub Pages ist statisch, es gibt keinen Server, der
-// ihn verstecken könnte) - er darf daher NUR Leserechte haben.
-const TURSO_HTTP_URL = "https://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io/v2/pipeline";
-const TURSO_READONLY_TOKEN = "__TURSO_READONLY_TOKEN__"; // per `turso db tokens create munotstadtenergydb --read-only` erzeugen
-const SQL_QUERY = "SELECT * FROM solarmanager_data ORDER BY Date_ISO";
-
-// Fallback, falls Turso nicht erreichbar ist (Netzwerk/CORS/Token-Problem):
-// weiterhin das von GitHub Actions exportierte statische JSON.
-const JSON_FALLBACK_PATH = "data/solarmanager_daily.json";
-
-// Lokaler Cache (localStorage): Seite zeigt beim Laden sofort die zuletzt
-// bekannten Daten, aktualisiert im Hintergrund via Turso und cached das
-// Ergebnis erneut ("stale-while-revalidate"). So muss nicht bei jedem
-// Seitenaufruf auf die DB-Antwort gewartet werden.
-const CACHE_KEY = "munotstadt_solarmanager_cache_v1";
-const CACHE_TTL_MS = 15 * 60 * 1000; // 15 Minuten
-
-function readCache(){
-  try{
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || !Array.isArray(parsed.data)) return null;
-    return parsed;
-  } catch(e){
-    console.warn("Cache konnte nicht gelesen werden:", e);
-    return null;
-  }
-}
-
-function writeCache(payload){
-  try{
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ...payload, cached_at: Date.now() }));
-  } catch(e){
-    // localStorage evtl. voll oder deaktiviert (z.B. privates Fenster) -
-    // unkritisch, das Dashboard funktioniert dann einfach ohne Cache.
-    console.warn("Cache konnte nicht geschrieben werden:", e);
-  }
-}
-
-// Wandelt einen Hrana-Value ({type,value|base64}) in einen normalen JS-Wert.
-// Siehe https://github.com/tursodatabase/libsql/blob/main/docs/HRANA_3_SPEC.md
-function valueFromHrana(cell){
-  if (!cell || cell.type === "null") return null;
-  switch (cell.type){
-    case "integer": return Number(cell.value);
-    case "float": return cell.value;
-    case "text": return cell.value;
-    case "blob": return cell.base64;
-    default: return null;
-  }
-}
-
-async function fetchFromTurso(){
-  const res = await fetch(TURSO_HTTP_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${TURSO_READONLY_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      requests: [
-        { type: "execute", stmt: { sql: SQL_QUERY } },
-        { type: "close" },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`Turso HTTP ${res.status}`);
-  const payload = await res.json();
-  const execResult = payload.results && payload.results[0];
-  if (!execResult || execResult.type !== "ok"){
-    const msg = (execResult && execResult.error && execResult.error.message) || "Turso-Query fehlgeschlagen";
-    throw new Error(msg);
-  }
-  const { cols, rows } = execResult.response.result;
-  const colNames = cols.map(c => c.name);
-  const data = rows.map(row => {
-    const obj = {};
-    row.forEach((cell, i) => { obj[colNames[i]] = valueFromHrana(cell); });
-    return obj;
-  });
-  return {
-    generated_at: new Date().toLocaleString('de-CH'),
-    row_count: data.length,
-    data,
-  };
-}
-
-async function fetchFromJsonFallback(){
-  const res = await fetch(JSON_FALLBACK_PATH, {cache:"no-store"});
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.json();
-}
+const JSON_PATH = "data/solarmanager_daily.json";
 
 const COLORS = {
   consumption: "#E30613", production: "#1f9d55",
@@ -339,47 +243,25 @@ function parseISO(iso){
 }
 
 // ---------- Data loading ----------
-function applyPayload(payload, sourceLabel){
-  DATA = (payload.data || []).slice().sort((a,b)=> a.Date_ISO < b.Date_ISO ? -1 : 1);
-  if (DATA.length === 0) return false;
-  document.getElementById('status').style.display = 'none';
-  document.getElementById('content').style.display = 'block';
-  document.getElementById('subline').textContent =
-    `${DATA[0].Date_Display} – ${DATA[DATA.length-1].Date_Display} · ${DATA.length} Tage`;
-  document.getElementById('footerInfo').textContent =
-    `Datenstand: ${payload.generated_at || '–'} · ${payload.row_count ?? DATA.length} Zeilen${sourceLabel ? ' · ' + sourceLabel : ''}`;
-  renderAll();
-  return true;
-}
-
 async function load(){
-  const cached = readCache();
-  let renderedFromCache = false;
-
-  if (cached && cached.data.length){
-    const ageMin = Math.round((Date.now() - (cached.cached_at || 0)) / 60000);
-    renderedFromCache = applyPayload(cached, `aus Cache, vor ${ageMin} Min. aktualisiert`);
-  } else {
-    document.getElementById('status').textContent = "Lade Daten von der Datenbank...";
-  }
-
-  const cacheIsFresh = cached && (Date.now() - (cached.cached_at || 0) < CACHE_TTL_MS);
-  if (cacheIsFresh) return; // Cache noch innerhalb der TTL - keine Netzwerkanfrage noetig
-
   try{
-    const fresh = await fetchFromTurso();
-    writeCache(fresh);
-    applyPayload(fresh, "live von Turso");
-  } catch(e){
-    console.warn("Turso-Live-Abruf fehlgeschlagen, versuche Fallback:", e);
-    if (renderedFromCache) return; // weiterhin (evtl. veraltete) Cache-Daten anzeigen
-    try{
-      const fallback = await fetchFromJsonFallback();
-      const ok = applyPayload(fallback, "statischer Export (Turso nicht erreichbar)");
-      if (!ok) document.getElementById('status').textContent = "Noch keine Daten vorhanden. Bitte zuerst einen Export hochladen.";
-    } catch(e2){
-      document.getElementById('status').textContent = `Fehler beim Laden: ${e.message}`;
+    const res = await fetch(JSON_PATH, {cache:"no-store"});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = await res.json();
+    DATA = (payload.data || []).slice().sort((a,b)=> a.Date_ISO < b.Date_ISO ? -1 : 1);
+    if (DATA.length === 0){
+      document.getElementById('status').textContent = "Noch keine Daten vorhanden. Bitte zuerst einen Export hochladen.";
+      return;
     }
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('subline').textContent =
+      `${DATA[0].Date_Display} – ${DATA[DATA.length-1].Date_Display} · ${DATA.length} Tage`;
+    document.getElementById('footerInfo').textContent =
+      `Datenstand: ${payload.generated_at || '–'} · ${payload.row_count ?? DATA.length} Zeilen`;
+    renderAll();
+  } catch(e){
+    document.getElementById('status').textContent = `Fehler beim Laden: ${e.message}`;
   }
 }
 
@@ -403,33 +285,34 @@ function sumRange(rows, field){
 }
 
 function renderKPIs(){
-  const last = DATA[DATA.length-1];
   const last7 = DATA.slice(-7);
-  const last30 = DATA.slice(-30);
   const prev7 = DATA.slice(-14, -7);
 
   const cons7 = sumRange(last7, 'Consumption_kWh');
   const prod7 = sumRange(last7, 'Production_kWh');
   const gridFrom7 = sumRange(last7, 'GridFrom_kWh');
+
   const consPrev7 = sumRange(prev7, 'Consumption_kWh');
+  const prodPrev7 = sumRange(prev7, 'Production_kWh');
+  const gridFromPrev7 = sumRange(prev7, 'GridFrom_kWh');
 
-  const autarky30 = (() => {
-    const c = sumRange(last30,'Consumption_kWh'), g = sumRange(last30,'GridFrom_kWh');
-    return c > 0 ? (1 - g/c) * 100 : null;
-  })();
-
-  const totalCons = sumRange(DATA, 'Consumption_kWh');
-  const totalProd = sumRange(DATA, 'Production_kWh');
+  const autarky7 = cons7 > 0 ? (1 - gridFrom7/cons7) * 100 : null;
+  const autarkyPrev7 = consPrev7 > 0 ? (1 - gridFromPrev7/consPrev7) * 100 : null;
 
   const deltaCons = consPrev7 > 0 ? ((cons7 - consPrev7) / consPrev7 * 100) : null;
+  const deltaProd = prodPrev7 > 0 ? ((prod7 - prodPrev7) / prodPrev7 * 100) : null;
+  const deltaAutarky = (autarky7 !== null && autarkyPrev7 !== null) ? (autarky7 - autarkyPrev7) : null;
 
   const cards = [
     { label: "Verbrauch (7 Tage)", value: `${fmt(cons7)} <small>kWh</small>`,
-      delta: deltaCons !== null ? `${deltaCons>=0?'+':''}${fmt(deltaCons,0)}% vs. Vorwoche` : "", 
+      delta: deltaCons !== null ? `${deltaCons>=0?'+':''}${fmt(deltaCons,0)}% vs. Vorwoche` : "",
       deltaCls: deltaCons > 0 ? 'down' : 'up' },
-    { label: "Produktion (7 Tage)", value: `${fmt(prod7)} <small>kWh</small>` },
-    { label: "Autarkiegrad (30 Tage)", value: autarky30 !== null ? `${fmt(autarky30,0)} <small>%</small>` : "–" },
-    { label: "Total (gesamter Zeitraum)", value: `${fmt(totalCons,0)} <small>kWh Verbrauch</small>` },
+    { label: "Produktion (7 Tage)", value: `${fmt(prod7)} <small>kWh</small>`,
+      delta: deltaProd !== null ? `${deltaProd>=0?'+':''}${fmt(deltaProd,0)}% vs. Vorwoche` : "",
+      deltaCls: deltaProd >= 0 ? 'up' : 'down' },
+    { label: "Autarkiegrad (7 Tage)", value: autarky7 !== null ? `${fmt(autarky7,0)} <small>%</small>` : "–",
+      delta: deltaAutarky !== null ? `${deltaAutarky>=0?'+':''}${fmt(deltaAutarky,0)} %-Pkte vs. Vorwoche` : "",
+      deltaCls: deltaAutarky >= 0 ? 'up' : 'down' },
   ];
 
   document.getElementById('kpiGrid').innerHTML = cards.map(c => `
@@ -625,7 +508,8 @@ function renderBarChart(containerId, categories, seriesDefs, opts={}){
 
   if (scrollable){
     // Newest categories are rightmost; auto-scroll so they're visible by default.
-    requestAnimationFrame(() => { container.scrollLeft = container.scrollWidth; });
+    const scrollToEnd = () => { container.scrollLeft = container.scrollWidth; };
+    requestAnimationFrame(() => requestAnimationFrame(scrollToEnd));
   }
 }
 
