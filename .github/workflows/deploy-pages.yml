@@ -25,7 +25,7 @@ jobs:
           mkdir -p dist
           rsync -a --exclude='.git' --exclude='.github' --exclude='dist' ./ dist/
 
-      - name: Turso Read-Only Token in index.html einsetzen
+      - name: Turso Read-Only Token in HTML-Dateien einsetzen
         env:
           TURSO_READONLY_TOKEN: ${{ secrets.TURSO_READONLY_TOKEN }}
         run: |
@@ -33,7 +33,9 @@ jobs:
             echo "::error::Secret TURSO_READONLY_TOKEN ist nicht gesetzt (Settings → Secrets and variables → Actions)."
             exit 1
           fi
-          sed -i "s|__TURSO_READONLY_TOKEN__|${TURSO_READONLY_TOKEN}|g" dist/index.html
+          grep -rl "__TURSO_READONLY_TOKEN__" dist --include="*.html" | while read -r f; do
+            sed -i "s|__TURSO_READONLY_TOKEN__|${TURSO_READONLY_TOKEN}|g" "$f"
+          done
 
       - uses: actions/configure-pages@v5
 
