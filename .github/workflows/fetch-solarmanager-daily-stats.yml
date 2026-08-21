@@ -1,0 +1,30 @@
+name: Solar Manager Tagesstatistik -> Turso
+
+on:
+  schedule:
+    # 5:30 UTC = 6:30/7:30 Schweizer Zeit (je nach Sommer-/Winterzeit)
+    - cron: "30 5 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependencies installieren
+        run: pip install -r scripts/requirements-solarmanager-live.txt
+
+      - name: Solar Manager Tagesstatistik (Vortag) abrufen und speichern
+        env:
+          SM_EMAIL: ${{ secrets.SM_EMAIL }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_GATEWAY_ID: ${{ secrets.SM_GATEWAY_ID }}
+          SM_BASE_URL: ${{ vars.SM_BASE_URL }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: python scripts/fetch_solarmanager_daily_stats.py
