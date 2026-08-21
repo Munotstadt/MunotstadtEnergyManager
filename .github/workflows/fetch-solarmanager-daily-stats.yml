@@ -4,7 +4,12 @@ on:
   schedule:
     # 1:00 UTC
     - cron: "0 1 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      rolling_days:
+        description: "Anzahl Tage rueckwirkend aktualisieren (Standard 10; z.B. 30 fuer einmalige Korrektur nach Bugfix)"
+        required: false
+        default: "10"
 
 jobs:
   fetch:
@@ -19,7 +24,7 @@ jobs:
       - name: Dependencies installieren
         run: pip install -r scripts/requirements-solarmanager-live.txt
 
-      - name: Solar Manager Tagesstatistik (Vortag) abrufen und speichern
+      - name: Solar Manager Tagesstatistik abrufen und speichern
         env:
           SM_EMAIL: ${{ secrets.SM_EMAIL }}
           SM_API_KEY: ${{ secrets.SM_API_KEY }}
@@ -27,4 +32,5 @@ jobs:
           SM_BASE_URL: ${{ vars.SM_BASE_URL }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          ROLLING_DAYS: ${{ github.event.inputs.rolling_days || '10' }}
         run: python scripts/fetch_solarmanager_daily_stats.py
