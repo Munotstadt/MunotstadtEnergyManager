@@ -50,8 +50,9 @@
   }
   h2 .hint{color:var(--text-dim); font-weight:400; font-size:0.78rem; margin-left:6px;}
 
-  .kpi-grid{display:grid; grid-template-columns:repeat(1,1fr); gap:14px; margin-bottom:8px;}
+  .kpi-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:8px;}
   @media(min-width:480px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
+  @media(min-width:760px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
   .kpi{
     background:var(--bg); border:1px solid var(--grey-300); border-radius:var(--radius);
     padding:14px 16px 12px;
@@ -179,7 +180,7 @@
       <div id="chartYearly"></div>
     </div>
 
-    <h2>Gerätenutzung pro Monat <span class="hint">Entfeuchter, Wasserpumpe, Ladestation</span></h2>
+    <h2>Gerätenutzung pro Tag <span class="hint">Entfeuchter, Wasserpumpe, Ladestation · letzte 90 Tage</span></h2>
     <div class="card">
       <div class="legend">
         <span><i class="swatch" style="background:var(--purple)"></i>Entfeuchter</span>
@@ -373,6 +374,19 @@ function sumRange(rows, field){
   return rows.reduce((s,r)=> s + (r[field]||0), 0);
 }
 
+function pctDelta(cur, prev){
+  return prev > 0 ? ((cur - prev) / prev * 100) : null;
+}
+
+function consumptionKpiCard(label, cur7, prev7){
+  const delta = pctDelta(cur7, prev7);
+  return {
+    label: `${label} (7 Tage)`, value: `${fmt(cur7)} <small>kWh</small>`,
+    delta: delta !== null ? `${delta>=0?'+':''}${fmt(delta,0)}% vs. Vorwoche` : "",
+    deltaCls: delta > 0 ? 'down' : 'up'
+  };
+}
+
 function renderKPIs(){
   const last7 = DATA.slice(-7);
   const prev7 = DATA.slice(-14, -7);
@@ -380,16 +394,24 @@ function renderKPIs(){
   const cons7 = sumRange(last7, 'Consumption_kWh');
   const prod7 = sumRange(last7, 'Production_kWh');
   const gridFrom7 = sumRange(last7, 'GridFrom_kWh');
+  const ladestation7 = sumRange(last7, 'Ladestation_kWh');
+  const entfeuchter7 = sumRange(last7, 'Entfeuchter_Waschen_kWh');
+  const wasserpumpe7 = sumRange(last7, 'Wasserpumpe_kWh');
+  const other7 = cons7 - ladestation7 - entfeuchter7 - wasserpumpe7;
 
   const consPrev7 = sumRange(prev7, 'Consumption_kWh');
   const prodPrev7 = sumRange(prev7, 'Production_kWh');
   const gridFromPrev7 = sumRange(prev7, 'GridFrom_kWh');
+  const ladestationPrev7 = sumRange(prev7, 'Ladestation_kWh');
+  const entfeuchterPrev7 = sumRange(prev7, 'Entfeuchter_Waschen_kWh');
+  const wasserpumpePrev7 = sumRange(prev7, 'Wasserpumpe_kWh');
+  const otherPrev7 = consPrev7 - ladestationPrev7 - entfeuchterPrev7 - wasserpumpePrev7;
 
   const autarky7 = cons7 > 0 ? (1 - gridFrom7/cons7) * 100 : null;
   const autarkyPrev7 = consPrev7 > 0 ? (1 - gridFromPrev7/consPrev7) * 100 : null;
 
-  const deltaCons = consPrev7 > 0 ? ((cons7 - consPrev7) / consPrev7 * 100) : null;
-  const deltaProd = prodPrev7 > 0 ? ((prod7 - prodPrev7) / prodPrev7 * 100) : null;
+  const deltaCons = pctDelta(cons7, consPrev7);
+  const deltaProd = pctDelta(prod7, prodPrev7);
   const deltaAutarky = (autarky7 !== null && autarkyPrev7 !== null) ? (autarky7 - autarkyPrev7) : null;
 
   const cards = [
@@ -402,6 +424,10 @@ function renderKPIs(){
     { label: "Autarkiegrad (7 Tage)", value: autarky7 !== null ? `${fmt(autarky7,0)} <small>%</small>` : "–",
       delta: deltaAutarky !== null ? `${deltaAutarky>=0?'+':''}${fmt(deltaAutarky,0)} %-Pkte vs. Vorwoche` : "",
       deltaCls: deltaAutarky >= 0 ? 'up' : 'down' },
+    consumptionKpiCard("Other Verbrauch", other7, otherPrev7),
+    consumptionKpiCard("Ladestation", ladestation7, ladestationPrev7),
+    consumptionKpiCard("Wasserpumpe", wasserpumpe7, wasserpumpePrev7),
+    consumptionKpiCard("Entfeuchter", entfeuchter7, entfeuchterPrev7),
   ];
 
   document.getElementById('kpiGrid').innerHTML = cards.map(c => `
@@ -413,98 +439,7 @@ function renderKPIs(){
   `).join('');
 }
 
-// ---------- Reusable SVG line chart with touch tooltip ----------
-function renderLineChart(containerId, rows, seriesDefs, opts={}){
-  const container = document.getElementById(containerId);
-  const W = 880, H = opts.height || 200;
-  const padL = 34, padR = 8, padT = 10, padB = 20;
-  const innerW = W - padL - padR, innerH = H - padT - padB;
-
-  const n = rows.length;
-  if (n === 0){ container.innerHTML = '<div style="color:var(--text-dim2);font-size:0.8rem;padding:20px 0;">Keine Daten im gewählten Zeitraum.</div>'; return; }
-
-  let maxVal = 0;
-  seriesDefs.forEach(s => rows.forEach(r => { maxVal = Math.max(maxVal, r[s.field]||0); }));
-  maxVal = maxVal <= 0 ? 1 : maxVal * 1.12;
-
-  const x = i => padL + (n === 1 ? innerW/2 : (i/(n-1)) * innerW);
-  const y = v => padT + innerH - (v/maxVal) * innerH;
-
-  const gridN = 4;
-  let gridLines = '';
-  let gridLabels = '';
-  for (let g=0; g<=gridN; g++){
-    const val = maxVal * g / gridN;
-    const yy = y(val);
-    gridLines += `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}"/>`;
-    gridLabels += `<text class="axis-label" x="${padL-6}" y="${yy+3}" text-anchor="end">${fmt(val,0)}</text>`;
-  }
-
-  const xLabelIdxs = [0, Math.floor(n*0.25), Math.floor(n*0.5), Math.floor(n*0.75), n-1];
-  let xLabels = '';
-  [...new Set(xLabelIdxs)].forEach(i => {
-    xLabels += `<text class="axis-label" x="${x(i)}" y="${H-4}" text-anchor="middle">${rows[i].Date_Display.slice(0,5)}</text>`;
-  });
-
-  let paths = '';
-  seriesDefs.forEach(s => {
-    let d = '';
-    rows.forEach((r,i) => {
-      const v = r[s.field] || 0;
-      d += (i===0 ? 'M' : 'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1) + ' ';
-    });
-    paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round"/>`;
-  });
-
-  const svgId = containerId + '_svg';
-  const svg = `
-    <svg id="${svgId}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
-      ${gridLines}${gridLabels}
-      ${paths}
-      ${xLabels}
-      <g id="${svgId}_tt" style="display:none;">
-        <line class="tooltip-line" x1="0" x2="0" y1="${padT}" y2="${H-padB}"/>
-        <circle r="3.2" fill="#1a1a1a" stroke="#fff" stroke-width="1"/>
-      </g>
-      <rect id="${svgId}_hit" x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="transparent"/>
-    </svg>
-    <div id="${svgId}_ttbox" style="display:none; position:relative; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text-dim); margin-top:2px;"></div>
-  `;
-  container.innerHTML = svg;
-
-  const svgEl = document.getElementById(svgId);
-  const hitEl = document.getElementById(svgId + '_hit');
-  const ttG = document.getElementById(svgId + '_tt');
-  const ttBox = document.getElementById(svgId + '_ttbox');
-  const circle = ttG.querySelector('circle');
-  const line = ttG.querySelector('line');
-
-  function showTooltip(clientX){
-    const rect = svgEl.getBoundingClientRect();
-    const scale = W / rect.width;
-    const localX = (clientX - rect.left) * scale;
-    let idx = Math.round(((localX - padL) / innerW) * (n-1));
-    idx = Math.max(0, Math.min(n-1, idx));
-    const r = rows[idx];
-    const xx = x(idx);
-    line.setAttribute('x1', xx); line.setAttribute('x2', xx);
-    circle.setAttribute('cx', xx);
-    circle.setAttribute('cy', y(r[seriesDefs[0].field]||0));
-    ttG.style.display = 'block';
-    ttBox.style.display = 'block';
-    ttBox.innerHTML = `<b style="color:var(--text)">${r.Date_Display}</b> &nbsp; ` +
-      seriesDefs.map(s => `<span style="color:${s.color}">${s.label}: ${fmt(r[s.field]||0)} kWh</span>`).join(' &nbsp; ');
-  }
-  function hideTooltip(){ ttG.style.display='none'; ttBox.style.display='none'; }
-
-  hitEl.addEventListener('mousemove', e => showTooltip(e.clientX));
-  hitEl.addEventListener('mouseleave', hideTooltip);
-  hitEl.addEventListener('touchstart', e => { showTooltip(e.touches[0].clientX); }, {passive:true});
-  hitEl.addEventListener('touchmove', e => { showTooltip(e.touches[0].clientX); }, {passive:true});
-  hitEl.addEventListener('touchend', hideTooltip);
-}
-
-// ---------- Reusable SVG grouped/stacked bar chart ----------
+// ---------- Reusable SVG grouped/stacked bar chart (supports negative values) ----------
 function renderBarChart(containerId, categories, seriesDefs, opts={}){
   const container = document.getElementById(containerId);
   const scrollable = !!opts.scrollable;
@@ -519,25 +454,33 @@ function renderBarChart(containerId, categories, seriesDefs, opts={}){
   const W = scrollable ? Math.max(padL + padR + n*catWidth, 880) : 880;
   const innerW = W - padL - padR, innerH = H - padT - padB;
 
-  let maxVal = 0;
+  let maxVal = 0, minVal = 0;
   categories.forEach(c => {
     if (stacked){
       let sum = 0;
       seriesDefs.forEach(s => sum += (c[s.field]||0));
       maxVal = Math.max(maxVal, sum);
+      minVal = Math.min(minVal, sum);
     } else {
-      seriesDefs.forEach(s => maxVal = Math.max(maxVal, c[s.field]||0));
+      seriesDefs.forEach(s => {
+        const v = c[s.field] || 0;
+        maxVal = Math.max(maxVal, v);
+        minVal = Math.min(minVal, v);
+      });
     }
   });
   if (opts.lines){
     opts.lines.forEach(ln => categories.forEach(c => {
       const v = c[ln.field];
-      if (v !== null && v !== undefined) maxVal = Math.max(maxVal, v);
+      if (v !== null && v !== undefined){ maxVal = Math.max(maxVal, v); minVal = Math.min(minVal, v); }
     }));
   }
   maxVal = maxVal <= 0 ? 1 : maxVal * 1.15;
+  minVal = minVal >= 0 ? 0 : minVal * 1.15;
+  const span = (maxVal - minVal) || 1;
 
-  const y = v => padT + innerH - (v/maxVal) * innerH;
+  const y = v => padT + ((maxVal - v) / span) * innerH;
+  const y0 = y(0);
   const groupW = innerW / n;
   const barGap = groupW * 0.22;
   const barsW = groupW - barGap;
@@ -546,32 +489,50 @@ function renderBarChart(containerId, categories, seriesDefs, opts={}){
   const gridN = 4;
   let gridLines = '', gridLabels = '';
   for (let g=0; g<=gridN; g++){
-    const val = maxVal * g / gridN;
+    const val = minVal + (maxVal - minVal) * g / gridN;
     const yy = y(val);
     gridLines += `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}"/>`;
     gridLabels += `<text class="axis-label" x="${padL-6}" y="${yy+3}" text-anchor="end">${fmt(val,0)}</text>`;
   }
+  if (minVal < 0){
+    gridLines += `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${y0}" y2="${y0}" style="stroke:var(--grey-600);"/>`;
+  }
 
-  let bars = '', xLabels = '';
+  let bars = '';
   categories.forEach((c, i) => {
     const gx = padL + i*groupW + barGap/2;
-    xLabels += `<text class="axis-label" x="${gx + barsW/2}" y="${H-6}" text-anchor="middle">${c.label}</text>`;
     if (stacked){
-      let cum = 0;
+      let cumPos = 0, cumNeg = 0;
       seriesDefs.forEach(s => {
         const v = c[s.field] || 0;
-        const y0 = y(cum), y1 = y(cum+v);
-        bars += `<rect x="${gx.toFixed(1)}" y="${y1.toFixed(1)}" width="${barsW.toFixed(1)}" height="${(y0-y1).toFixed(1)}" fill="${s.color}" rx="1.5"/>`;
-        cum += v;
+        let yTop, yBot;
+        if (v >= 0){ yTop = y(cumPos+v); yBot = y(cumPos); cumPos += v; }
+        else { yTop = y(cumNeg); yBot = y(cumNeg+v); cumNeg += v; }
+        bars += `<rect x="${gx.toFixed(1)}" y="${yTop.toFixed(1)}" width="${barsW.toFixed(1)}" height="${(yBot-yTop).toFixed(1)}" fill="${s.color}" rx="1.5"/>`;
       });
     } else {
       seriesDefs.forEach((s, si) => {
         const v = c[s.field] || 0;
         const bx = gx + si*singleBarW;
         const yy = y(v);
-        bars += `<rect x="${bx.toFixed(1)}" y="${yy.toFixed(1)}" width="${(singleBarW*0.85).toFixed(1)}" height="${(padT+innerH-yy).toFixed(1)}" fill="${s.color}" rx="1.5"/>`;
+        const top = Math.min(yy, y0), h = Math.abs(yy - y0);
+        bars += `<rect x="${bx.toFixed(1)}" y="${top.toFixed(1)}" width="${(singleBarW*0.85).toFixed(1)}" height="${h.toFixed(1)}" fill="${s.color}" rx="1.5"/>`;
       });
     }
+  });
+
+  // x-axis (category) labels: full list for few categories, sparse subset for many
+  let xLabels = '';
+  const labelIdxs = (opts.sparseLabels && n > 10)
+    ? [...new Set([0, Math.floor(n*0.25), Math.floor(n*0.5), Math.floor(n*0.75), n-1])]
+    : [...Array(n).keys()];
+  labelIdxs.forEach(i => {
+    const c = categories[i];
+    const gx = padL + i*groupW + barGap/2;
+    const cx = gx + barsW/2;
+    const anchor = i === 0 ? 'start' : (i === n-1 ? 'end' : 'middle');
+    const lx = i === 0 ? gx : (i === n-1 ? gx + barsW : cx);
+    xLabels += `<text class="axis-label" x="${lx.toFixed(1)}" y="${H-6}" text-anchor="${anchor}">${c.label}</text>`;
   });
 
   let lines = '';
@@ -611,14 +572,26 @@ function filteredByRange(range){
 
 function renderDailyCharts(){
   const rows = filteredByRange(currentRange);
-  renderLineChart('chartDaily', rows, [
-    {field:'Consumption_kWh', color: COLORS.consumption, label:'Verbrauch'},
-    {field:'Production_kWh', color: COLORS.production, label:'Produktion'},
-  ]);
-  renderLineChart('chartGrid', rows, [
-    {field:'GridFrom_kWh', color: COLORS.gridFrom, label:'Netzbezug'},
-    {field:'GridTo_kWh', color: COLORS.gridTo, label:'Einspeisung'},
-  ]);
+
+  const dailyCats = rows.map(r => ({
+    label: r.Date_Display.slice(0,5),
+    Consumption_kWh: r.Consumption_kWh || 0,
+    Production_kWh: r.Production_kWh || 0,
+  }));
+  renderBarChart('chartDaily', dailyCats, [
+    {field:'Consumption_kWh', color: COLORS.consumption},
+    {field:'Production_kWh', color: COLORS.production},
+  ], {height: 200, sparseLabels: true});
+
+  const gridCats = rows.map(r => ({
+    label: r.Date_Display.slice(0,5),
+    GridFrom_kWh: r.GridFrom_kWh || 0,
+    GridTo_kWh: -(r.GridTo_kWh || 0), // Einspeisung wird negativ (unterhalb 0) dargestellt
+  }));
+  renderBarChart('chartGrid', gridCats, [
+    {field:'GridFrom_kWh', color: COLORS.gridFrom},
+    {field:'GridTo_kWh', color: COLORS.gridTo},
+  ], {height: 200, sparseLabels: true});
 }
 
 function monthlyAggregates(){
@@ -716,12 +689,17 @@ function renderYearly(){
 }
 
 function renderDevices(){
-  const monthly = monthlyAggregates();
-  renderBarChart('chartDevices', monthly, [
+  const daily = DATA.slice(-90).map(r => ({
+    label: r.Date_Display.slice(0,5),
+    Entfeuchter_Waschen_kWh: r.Entfeuchter_Waschen_kWh || 0,
+    Wasserpumpe_kWh: r.Wasserpumpe_kWh || 0,
+    Ladestation_kWh: r.Ladestation_kWh || 0,
+  }));
+  renderBarChart('chartDevices', daily, [
     {field:'Entfeuchter_Waschen_kWh', color: COLORS.entfeuchter},
     {field:'Wasserpumpe_kWh', color: COLORS.wasserpumpe},
     {field:'Ladestation_kWh', color: COLORS.ladestation},
-  ], {height: 200, stacked:true});
+  ], {height: 200, stacked:true, sparseLabels:true});
 }
 
 function renderTable(){

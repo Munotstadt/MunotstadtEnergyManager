@@ -1,6 +1,6 @@
 # Solar Manager Live-Pipeline (Cloud API → Turso)
 
-Ergänzung zur bestehenden `MunotstadtEnergyManager`-Pipeline. Läuft
+Ergänzung zur bestehenden `energymanager`-Pipeline. Läuft
 **unabhängig und parallel** zur bestehenden täglichen
 Solarmanager-CSV-Verarbeitung (`process_solarmanager.py` →
 `solarmanager_data`-Tabelle bzw. `data/solarmanager_daily.json`) –

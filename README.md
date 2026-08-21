@@ -1,4 +1,4 @@
-# Munotstadt_EnergyManager
+# energymanager
 
 Web-Upload für Energie-CSV-Exports → automatische Verarbeitung → Speicherung
 in Turso (`munotstadtenergydb`). Zwei unabhängige Quellen/Pipelines:
@@ -29,7 +29,7 @@ in Turso (`munotstadtenergydb`). Zwei unabhängige Quellen/Pipelines:
 ## Setup
 
 ### 1. Repo erstellen
-- Neues **public** Repo `Munotstadt_EnergyManager` unter der Organisation `Munotstadt`.
+- Neues **public** Repo `energymanager` unter der Organisation `Munotstadt`.
 - Alle Dateien aus diesem Paket hochladen (Struktur beachten: `.github/workflows/...`).
 - Settings → Pages → Source: `main` Branch, `/ (root)`.
 
@@ -49,13 +49,13 @@ Settings → Secrets and variables → Actions:
 
 ### 4. Personal Access Token für den Upload
 - Ein fine-grained GitHub PAT erstellen mit **Contents: Read & Write** auf
-  `Munotstadt/Munotstadt_EnergyManager`.
+  `Munotstadt/energymanager`.
 - Dieses Token wird auf der Upload-Seite selbst eingegeben (optional lokal
   im Browser gespeichert) — es liegt nie im Repo.
 
 ## Nutzung
 
-`https://munotstadt.github.io/Munotstadt_EnergyManager/` (Dashboard, Startseite) bzw. `.../solarmanageruploader.html` (Upload) öffnen, Token
+`https://munotstadt.github.io/energymanager/` (Dashboard, Startseite) bzw. `.../solarmanageruploader.html` (Upload) öffnen, Token
 eintragen, im gewünschten Bereich (Solarmanager oder Kostal) die passende
 CSV-Datei auswählen und hochladen. Verarbeitung läuft automatisch
 (ca. 1–2 Minuten), Status unter dem Actions-Tab des Repos.
