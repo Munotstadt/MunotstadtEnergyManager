@@ -180,7 +180,7 @@
       <div id="chartYearly"></div>
     </div>
 
-    <h2>Gerätenutzung pro Tag <span class="hint">Entfeuchter, Wasserpumpe, Ladestation · letzte 90 Tage</span></h2>
+    <h2>Gerätenutzung pro Monat <span class="hint">Entfeuchter, Wasserpumpe, Ladestation</span></h2>
     <div class="card">
       <div class="legend">
         <span><i class="swatch" style="background:var(--purple)"></i>Entfeuchter</span>
@@ -689,17 +689,12 @@ function renderYearly(){
 }
 
 function renderDevices(){
-  const daily = DATA.slice(-90).map(r => ({
-    label: r.Date_Display.slice(0,5),
-    Entfeuchter_Waschen_kWh: r.Entfeuchter_Waschen_kWh || 0,
-    Wasserpumpe_kWh: r.Wasserpumpe_kWh || 0,
-    Ladestation_kWh: r.Ladestation_kWh || 0,
-  }));
-  renderBarChart('chartDevices', daily, [
+  const monthly = monthlyAggregates();
+  renderBarChart('chartDevices', monthly, [
     {field:'Entfeuchter_Waschen_kWh', color: COLORS.entfeuchter},
     {field:'Wasserpumpe_kWh', color: COLORS.wasserpumpe},
     {field:'Ladestation_kWh', color: COLORS.ladestation},
-  ], {height: 200, stacked:true, sparseLabels:true});
+  ], {height: 200, stacked:true});
 }
 
 function renderTable(){

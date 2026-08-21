@@ -117,6 +117,11 @@
       <div class="table-scroll"><table id="deviceTable"></table></div>
     </div>
 
+    <h2>Monatsübersicht (kumuliert) <span class="hint">pro Tag · letzte 90 Tage, neuster zuoberst</span></h2>
+    <div class="card" style="padding-bottom:14px;">
+      <div class="table-scroll"><table id="dailyCumTable"></table></div>
+    </div>
+
   </div>
   <div class="footer" id="footerInfo"></div>
 </div>
@@ -292,6 +297,7 @@ function renderAll(){
   renderLegend();
   renderChart();
   renderTable();
+  renderDailyCumTable();
 }
 
 function renderLegend(){
@@ -319,6 +325,21 @@ function renderTable(){
     return `<tr><td>${r.Date_Display}</td>${cells}<td><b>${fmt(total,1)}</b></td></tr>`;
   }).join('');
   document.getElementById('deviceTable').innerHTML = head + body;
+}
+
+function renderDailyCumTable(){
+  const rows = DATA.slice(-90).slice().reverse(); // newest first, letzte 90 Tage
+  const head = `<tr><th>Datum</th>${DEVICES.map(d=>`<th>${d.label}</th>`).join('')}<th>Total</th></tr>`;
+  const body = rows.map(r => {
+    let total = 0;
+    const cells = DEVICES.map(d => {
+      const v = r[d.label] || 0;
+      total += v;
+      return `<td>${fmt(v,1)}</td>`;
+    }).join('');
+    return `<tr><td>${r.Date_Display}</td>${cells}<td><b>${fmt(total,1)}</b></td></tr>`;
+  }).join('');
+  document.getElementById('dailyCumTable').innerHTML = head + body;
 }
 
 // ---------- Reusable SVG line chart with touch tooltip ----------
