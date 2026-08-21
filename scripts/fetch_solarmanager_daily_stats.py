@@ -1,15 +1,19 @@
 """
-Solar Manager CLOUD API -> Turso (rollierende 10-Tage-Statistik)
+Solar Manager CLOUD API -> Turso (rollierende N-Tage-Statistik)
 
-Laeuft einmal taeglich (01:00 UTC) und aktualisiert die letzten 10
-abgeschlossenen Kalendertage:
+Laeuft einmal taeglich (01:00 UTC) und aktualisiert standardmaessig die
+letzten 10 abgeschlossenen Kalendertage (Schweizer Lokalzeit,
+Europe/Zurich, DST-aware -- siehe last_n_complete_days_zurich()):
   1. Gesamtsumme (Gateway) -> solarmanager_daily_stats
   2. Pro Geraet             -> solarmanager_daily_stats_by_device
   3. Zusammengefuehrt       -> solarmanager_data (kWh, ueber
      solarmanager_devices.Bezeichnung den richtigen Spalten
      zugeordnet)
 
-Alle Schreibvorgaenge sind UPSERTs (kein Duplikat bei erneutem Lauf).
+Alle Schreibvorgaenge sind UPSERTs (kein Duplikat bei erneutem Lauf) --
+das Fenster kann daher per ROLLING_DAYS env var vergroessert werden, um
+bereits gespeicherte Tage rueckwirkend zu korrigieren (z.B. einmaliger
+manueller Lauf mit ROLLING_DAYS=30 nach einem Bugfix).
 
 Endpunkte:
   - GET /v1/statistics/gateways/{smId}?accuracy=day&from=...&to=...
@@ -34,9 +38,12 @@ import sys
 import json
 import base64
 import datetime as dt
+from zoneinfo import ZoneInfo
 
 import requests
 import libsql_experimental as libsql
+
+ZURICH_TZ = ZoneInfo("Europe/Zurich")
 
 
 def _env_or_default(name: str, default: str) -> str:
@@ -64,7 +71,7 @@ DEVICE_IDS = [
     "658153db411180774fe01246",
 ]
 
-ROLLING_DAYS = 10
+ROLLING_DAYS = int(_env_or_default("ROLLING_DAYS", "10"))
 
 # Bezeichnung (aus solarmanager_devices, endet auf "_Wh") -> Spalte in
 # solarmanager_data (endet auf "_kWh"). Nur diese drei Geraete haben
@@ -87,18 +94,28 @@ def auth_headers() -> dict:
     return {"accept": "application/json", "authorization": basic_auth_header()}
 
 
-def last_n_complete_days_utc(n: int):
+def last_n_complete_days_zurich(n: int):
     """Liste von (day_date, from_iso, to_iso) fuer die letzten n
-    ABGESCHLOSSENEN Kalendertage in UTC (nicht der laufende Tag)."""
-    today_utc = dt.datetime.now(dt.timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    ABGESCHLOSSENEN Kalendertage in Schweizer Lokalzeit (Europe/Zurich,
+    DST-aware -- CET im Winter, CEST im Sommer).
+
+    Die Tagesgrenzen werden erst NACH der lokalen Berechnung nach UTC
+    konvertiert (die API erwartet UTC-Zeitstempel). Vorher wurde direkt
+    in UTC-Kalendertagen gerechnet (00:00-24:00 UTC), was in der
+    Schweizer Zeitzone einer Verschiebung von 1h (Winter) bzw. 2h
+    (Sommer) gegenueber dem echten Kalendertag entsprach -- z.B. wurden
+    dadurch die ersten zwei Stunden eines Schweizer Tages faelschlich
+    dem Vortag zugerechnet."""
+    now_local = dt.datetime.now(ZURICH_TZ)
+    today_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
     fmt = "%Y-%m-%dT%H:%M:%S.000Z"
     days = []
     for i in range(n, 0, -1):
-        day_start = today_utc - dt.timedelta(days=i)
-        day_end = today_utc - dt.timedelta(days=i - 1)
-        days.append((day_start.date(), day_start.strftime(fmt), day_end.strftime(fmt)))
+        day_start_local = today_local - dt.timedelta(days=i)
+        day_end_local = today_local - dt.timedelta(days=i - 1)
+        day_start_utc = day_start_local.astimezone(dt.timezone.utc)
+        day_end_utc = day_end_local.astimezone(dt.timezone.utc)
+        days.append((day_start_local.date(), day_start_utc.strftime(fmt), day_end_utc.strftime(fmt)))
     return days
 
 
@@ -301,7 +318,7 @@ def main():
     conn = libsql.connect(TURSO_DATABASE_URL, auth_token=TURSO_AUTH_TOKEN)
     ensure_schema(conn)
 
-    days = last_n_complete_days_utc(ROLLING_DAYS)
+    days = last_n_complete_days_zurich(ROLLING_DAYS)
     day_dates_iso = [d[0].isoformat() for d in days]
 
     # --- 1) Gesamtsumme (Gateway), Tag fuer Tag ---
