@@ -2,8 +2,8 @@ name: Solar Manager Tagesstatistik -> Turso
 
 on:
   schedule:
-    # 5:30 UTC = 6:30/7:30 Schweizer Zeit (je nach Sommer-/Winterzeit)
-    - cron: "30 5 * * *"
+    # 1:00 UTC
+    - cron: "0 1 * * *"
   workflow_dispatch: {}
 
 jobs:
