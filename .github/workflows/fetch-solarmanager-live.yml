@@ -1,9 +1,9 @@
-name: Solar Manager Tagesstatistik -> Turso
+name: Solar Manager Live -> Turso
 
 on:
   schedule:
-    # 5:30 UTC = 6:30/7:30 Schweizer Zeit (je nach Sommer-/Winterzeit)
-    - cron: "30 5 * * *"
+    # alle 30 Minuten (UTC) - bei Bedarf anpassen
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 jobs:
@@ -19,12 +19,13 @@ jobs:
       - name: Dependencies installieren
         run: pip install -r scripts/requirements-solarmanager-live.txt
 
-      - name: Solar Manager Tagesstatistik (Vortag) abrufen und speichern
+      - name: Solar Manager Live-Datenpunkt abrufen und speichern
         env:
           SM_EMAIL: ${{ secrets.SM_EMAIL }}
           SM_API_KEY: ${{ secrets.SM_API_KEY }}
           SM_GATEWAY_ID: ${{ secrets.SM_GATEWAY_ID }}
           SM_BASE_URL: ${{ vars.SM_BASE_URL }}
+          SM_POINT_PATH: ${{ vars.SM_POINT_PATH }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-        run: python scripts/fetch_solarmanager_daily_stats.py
+        run: python scripts/fetch_solarmanager_live.py
