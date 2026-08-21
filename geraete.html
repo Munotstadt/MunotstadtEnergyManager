@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Munotstadt Energy · Geräte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --red:#E30613;
+    --ink:#1a1a1a;
+    --grey-900:#2b2b2b;
+    --grey-600:#666;
+    --grey-300:#d8d8d8;
+    --grey-100:#f4f4f4;
+    --bg:#ffffff;
+    --radius:6px;
+    --panel:#ffffff; --panel-2:#f4f4f4; --border:#d8d8d8;
+    --text:#1a1a1a; --text-dim:#666; --text-dim2:#8a8a8a;
+    --accent:#E30613; --accent-dim:#fdeceb;
+    --green:#1f9d55; --blue:#1f6feb; --amber:#b9770e; --purple:#7c3aed;
+    --grid:#e8e8e8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:15px; line-height:1.45;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:24px 20px 60px;}
+  header.topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; border-bottom:2px solid var(--ink);
+  }
+  header.topbar .brand{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px;}
+  header.topbar .brand span{color:var(--red);}
+  header.topbar .nav-link{
+    text-decoration:none; color:var(--ink); font-size:13px; font-weight:500;
+    padding:7px 12px; border-radius:var(--radius); white-space:nowrap;
+  }
+  header.topbar .nav-link:hover{background:var(--grey-100);}
+
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1.4rem; margin:0 0 2px;}
+  .sub{color:var(--text-dim); font-size:0.85rem; margin-bottom:20px;}
+  h2{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:1rem;
+    margin:28px 0 10px; color:var(--text);
+  }
+  h2 .hint{color:var(--text-dim); font-weight:400; font-size:0.78rem; margin-left:6px;}
+
+  .card{
+    background:var(--bg); border:1px solid var(--grey-300); border-radius:var(--radius);
+    padding:16px 18px 8px; margin-bottom:6px;
+  }
+  .legend{display:flex; flex-wrap:wrap; gap:16px; font-size:0.76rem; color:var(--text-dim); margin-bottom:6px;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:9px; height:9px; border-radius:2px; display:inline-block;}
+
+  .tabs{display:inline-flex; gap:0; margin-bottom:10px; flex-wrap:wrap; border:1px solid var(--grey-300); border-radius:var(--radius); overflow:hidden;}
+  .tab{
+    background:#fff; border:none; border-right:1px solid var(--grey-300); color:var(--ink);
+    font-family:'Inter',sans-serif; font-weight:500; font-size:13px; padding:7px 14px;
+    cursor:pointer;
+  }
+  .tab:last-child{border-right:none;}
+  .tab.active{background:var(--ink); color:#fff;}
+  .tab:hover:not(.active){background:var(--grey-100);}
+
+  svg{width:100%; height:auto; display:block; touch-action:pan-y;}
+  .axis-label{font-family:'IBM Plex Mono',monospace; font-size:9.5px; fill:var(--text-dim2);}
+  .gridline{stroke:var(--grid); stroke-width:1;}
+  .tooltip-line{stroke:var(--text-dim); stroke-width:1; stroke-dasharray:2,2;}
+
+  table{width:100%; border-collapse:collapse; font-family:'IBM Plex Mono',monospace; font-size:0.78rem;}
+  th{text-align:right; color:var(--grey-600); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--grey-300); font-size:0.68rem; text-transform:uppercase; letter-spacing:.03em; white-space:nowrap;}
+  th:first-child, td:first-child{text-align:left;}
+  td{text-align:right; padding:8px 10px; border-bottom:1px solid var(--grid); white-space:nowrap;}
+  tr:hover td{background:var(--grey-100);}
+  tr:last-child td{border-bottom:none;}
+  .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -2px;}
+  .table-scroll table{min-width:600px;}
+
+  #status{color:var(--text-dim); font-family:'IBM Plex Mono',monospace; font-size:0.82rem; padding:40px 0; text-align:center;}
+  .footer{color:var(--text-dim2); font-size:0.72rem; text-align:center; margin-top:30px;}
+  a{color:var(--accent);}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Munotstadt <span>Energy</span></div>
+  <a href="index.html" class="nav-link">&larr; Dashboard</a>
+</header>
+<div class="wrap">
+  <div>
+    <h1>Geräte · Tagesverbrauch</h1>
+    <div class="sub" id="subline">Lade Daten...</div>
+  </div>
+  <div id="status">Lade Daten von Turso...</div>
+  <div id="content" style="display:none;">
+
+    <div class="tabs" id="rangeTabs">
+      <button class="tab" data-range="30">30T</button>
+      <button class="tab" data-range="90">90T</button>
+      <button class="tab" data-range="365">365T</button>
+      <button class="tab active" data-range="all">Alles</button>
+    </div>
+
+    <h2>Verbrauch pro Gerät <span class="hint">Tageswerte in kWh</span></h2>
+    <div class="card">
+      <div class="legend" id="deviceLegend"></div>
+      <div id="chartDevices"></div>
+    </div>
+
+    <h2>Tabelle <span class="hint">letzte 30 Tage, neuster zuoberst</span></h2>
+    <div class="card" style="padding-bottom:14px;">
+      <div class="table-scroll"><table id="deviceTable"></table></div>
+    </div>
+
+  </div>
+  <div class="footer" id="footerInfo"></div>
+</div>
+
+<script>
+// ---------- Turso (live, read-only) ----------
+const TURSO_URL = "https://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io/v2/pipeline";
+const TURSO_READONLY_TOKEN = "__TURSO_READONLY_TOKEN__";
+
+const CACHE_KEY = "munotstadt_devices_cache_v1";
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 Minuten
+
+const DEVICE_COLORS = {
+  "Ladestation": "#b9770e",
+  "Wasserpumpe": "#1f6feb",
+  "Entfeuchter/Waschen": "#7c3aed"
+};
+const FALLBACK_PALETTE = ["#E30613","#1f9d55","#b9770e","#1f6feb","#7c3aed","#68686f"];
+
+let DATA = [];       // pivoted rows: {Date_ISO, Date_Display, [deviceLabel]: kWh, ...}
+let DEVICES = [];    // [{label, color}]
+let currentRange = "all";
+
+function fmt(n, digits=1){
+  if (n === null || n === undefined || isNaN(n)) return "–";
+  return n.toLocaleString('de-CH', {minimumFractionDigits:digits, maximumFractionDigits:digits});
+}
+function parseISO(iso){
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function deviceLabel(bezeichnung){
+  // "Ladestation_Wh" -> "Ladestation", "Entfeuchter_Waschen_Wh" -> "Entfeuchter/Waschen"
+  return (bezeichnung || "Unbekannt").replace(/_Wh$/,'').replace(/_/g,'/');
+}
+function colorForDevice(label, idx){
+  return DEVICE_COLORS[label] || FALLBACK_PALETTE[idx % FALLBACK_PALETTE.length];
+}
+
+function readCache(){
+  try{
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+function writeCache(rows){
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), rows })); }
+  catch(e){ /* best effort */ }
+}
+
+async function fetchFromTurso(){
+  const body = {
+    requests: [
+      { type:"execute", stmt:{ sql:
+        `SELECT d.stat_date AS stat_date, dev.Bezeichnung AS bezeichnung, SUM(d.consumption_wh) AS wh
+         FROM solarmanager_daily_stats_by_device d
+         JOIN solarmanager_devices dev ON dev.device_id = d.device_id
+         GROUP BY d.stat_date, dev.Bezeichnung
+         ORDER BY d.stat_date`
+      }},
+      { type:"close" }
+    ]
+  };
+  const res = await fetch(TURSO_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${TURSO_READONLY_TOKEN}` },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Turso HTTP ${res.status}`);
+  const data = await res.json();
+  const result = data.results?.[0];
+  if (result?.type === "error") throw new Error(result.error?.message || "Turso-Fehler");
+  const r = result?.response?.result;
+  if (!r || !r.rows) return [];
+  const cols = r.cols.map(c => c.name);
+  return r.rows.map(row => {
+    const obj = {};
+    row.forEach((cell, i) => {
+      const key = cols[i];
+      const raw = cell.value === undefined ? null : cell.value;
+      obj[key] = (key === "wh" && raw !== null) ? Number(raw) : raw;
+    });
+    return obj;
+  });
+}
+
+// Pivotiert flache {stat_date, bezeichnung, wh}-Zeilen zu einer Zeile pro Datum,
+// einer Spalte pro Gerät (in kWh).
+function pivot(flatRows){
+  const byDate = new Map();
+  const labelSet = new Set();
+  flatRows.forEach(r => {
+    const label = deviceLabel(r.bezeichnung);
+    labelSet.add(label);
+    if (!byDate.has(r.stat_date)){
+      const d = parseISO(r.stat_date);
+      const p = n => String(n).padStart(2,'0');
+      byDate.set(r.stat_date, {
+        Date_ISO: r.stat_date,
+        Date_Display: `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()}`
+      });
+    }
+    const row = byDate.get(r.stat_date);
+    row[label] = (row[label] || 0) + (r.wh || 0) / 1000;
+  });
+  const rows = [...byDate.values()].sort((a,b)=> a.Date_ISO < b.Date_ISO ? -1 : 1);
+  const labels = [...labelSet].sort();
+  return { rows, labels };
+}
+
+function applyData(flatRows, sourceLabel){
+  const { rows, labels } = pivot(flatRows);
+  DATA = rows;
+  DEVICES = labels.map((label, i) => ({ label, color: colorForDevice(label, i) }));
+
+  if (DATA.length === 0){
+    document.getElementById('status').textContent = "Noch keine Gerätedaten vorhanden.";
+    return false;
+  }
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('subline').textContent =
+    `${DATA[0].Date_Display} – ${DATA[DATA.length-1].Date_Display} · ${DATA.length} Tage · ${DEVICES.length} Geräte`;
+  document.getElementById('footerInfo').textContent = `Datenquelle: ${sourceLabel}`;
+  renderAll();
+  return true;
+}
+
+async function load(){
+  const cached = readCache();
+  let shownFromCache = false;
+  if (cached && cached.rows && cached.rows.length){
+    applyData(cached.rows, `Turso (Cache · ${new Date(cached.ts).toLocaleTimeString('de-CH')})`);
+    shownFromCache = true;
+  }
+
+  const isFresh = cached && (Date.now() - cached.ts < CACHE_TTL_MS);
+  if (isFresh) return;
+
+  try{
+    const rows = await fetchFromTurso();
+    if (rows.length === 0) throw new Error("Keine Daten von Turso erhalten");
+    writeCache(rows);
+    applyData(rows, "Turso (live)");
+  } catch(e){
+    console.warn("Turso-Zugriff fehlgeschlagen:", e);
+    if (!shownFromCache){
+      document.getElementById('status').textContent = `Fehler beim Laden: ${e.message}`;
+    } else {
+      const footer = document.getElementById('footerInfo');
+      footer.textContent += " · Live-Update fehlgeschlagen, zeige Cache";
+    }
+  }
+}
+
+// ---------- Range tabs ----------
+function filteredByRange(range){
+  if (range === "all") return DATA;
+  const n = parseInt(range, 10);
+  return DATA.slice(-n);
+}
+
+document.querySelectorAll('#rangeTabs .tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#rangeTabs .tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentRange = btn.dataset.range;
+    renderChart();
+  });
+});
+
+function renderAll(){
+  renderLegend();
+  renderChart();
+  renderTable();
+}
+
+function renderLegend(){
+  document.getElementById('deviceLegend').innerHTML = DEVICES.map(d =>
+    `<span><i class="swatch" style="background:${d.color}"></i>${d.label}</span>`
+  ).join('');
+}
+
+function renderChart(){
+  const rows = filteredByRange(currentRange);
+  const seriesDefs = DEVICES.map(d => ({ field: d.label, color: d.color, label: d.label }));
+  renderLineChart('chartDevices', rows, seriesDefs, { height: 220 });
+}
+
+function renderTable(){
+  const rows = DATA.slice(-30).slice().reverse(); // newest first
+  const head = `<tr><th>Datum</th>${DEVICES.map(d=>`<th>${d.label}</th>`).join('')}<th>Total</th></tr>`;
+  const body = rows.map(r => {
+    let total = 0;
+    const cells = DEVICES.map(d => {
+      const v = r[d.label] || 0;
+      total += v;
+      return `<td>${fmt(v,1)}</td>`;
+    }).join('');
+    return `<tr><td>${r.Date_Display}</td>${cells}<td><b>${fmt(total,1)}</b></td></tr>`;
+  }).join('');
+  document.getElementById('deviceTable').innerHTML = head + body;
+}
+
+// ---------- Reusable SVG line chart with touch tooltip ----------
+function renderLineChart(containerId, rows, seriesDefs, opts={}){
+  const container = document.getElementById(containerId);
+  const W = 880, H = opts.height || 200;
+  const padL = 34, padR = 8, padT = 10, padB = 20;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+
+  const n = rows.length;
+  if (n === 0){ container.innerHTML = '<div style="color:var(--text-dim2);font-size:0.8rem;padding:20px 0;">Keine Daten im gewählten Zeitraum.</div>'; return; }
+
+  let maxVal = 0;
+  seriesDefs.forEach(s => rows.forEach(r => { maxVal = Math.max(maxVal, r[s.field]||0); }));
+  maxVal = maxVal <= 0 ? 1 : maxVal * 1.12;
+
+  const x = i => padL + (n === 1 ? innerW/2 : (i/(n-1)) * innerW);
+  const y = v => padT + innerH - (v/maxVal) * innerH;
+
+  const gridN = 4;
+  let gridLines = '';
+  let gridLabels = '';
+  for (let g=0; g<=gridN; g++){
+    const val = maxVal * g / gridN;
+    const yy = y(val);
+    gridLines += `<line class="gridline" x1="${padL}" x2="${W-padR}" y1="${yy}" y2="${yy}"/>`;
+    gridLabels += `<text class="axis-label" x="${padL-6}" y="${yy+3}" text-anchor="end">${fmt(val,0)}</text>`;
+  }
+
+  const xLabelIdxs = [0, Math.floor(n*0.25), Math.floor(n*0.5), Math.floor(n*0.75), n-1];
+  let xLabels = '';
+  [...new Set(xLabelIdxs)].forEach(i => {
+    xLabels += `<text class="axis-label" x="${x(i)}" y="${H-4}" text-anchor="middle">${rows[i].Date_Display.slice(0,5)}</text>`;
+  });
+
+  let paths = '';
+  seriesDefs.forEach(s => {
+    let d = '';
+    rows.forEach((r,i) => {
+      const v = r[s.field] || 0;
+      d += (i===0 ? 'M' : 'L') + x(i).toFixed(1) + ',' + y(v).toFixed(1) + ' ';
+    });
+    paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="1.8" stroke-linejoin="round"/>`;
+  });
+
+  const svgId = containerId + '_svg';
+  const svg = `
+    <svg id="${svgId}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      ${gridLines}${gridLabels}
+      ${paths}
+      ${xLabels}
+      <g id="${svgId}_tt" style="display:none;">
+        <line class="tooltip-line" x1="0" x2="0" y1="${padT}" y2="${H-padB}"/>
+        <circle r="3.2" fill="#1a1a1a" stroke="#fff" stroke-width="1"/>
+      </g>
+      <rect id="${svgId}_hit" x="${padL}" y="${padT}" width="${innerW}" height="${innerH}" fill="transparent"/>
+    </svg>
+    <div id="${svgId}_ttbox" style="display:none; position:relative; font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--text-dim); margin-top:2px;"></div>
+  `;
+  container.innerHTML = svg;
+
+  const svgEl = document.getElementById(svgId);
+  const hitEl = document.getElementById(svgId + '_hit');
+  const ttG = document.getElementById(svgId + '_tt');
+  const ttBox = document.getElementById(svgId + '_ttbox');
+  const circle = ttG.querySelector('circle');
+  const line = ttG.querySelector('line');
+
+  function showTooltip(clientX){
+    const rect = svgEl.getBoundingClientRect();
+    const scale = W / rect.width;
+    const localX = (clientX - rect.left) * scale;
+    let idx = Math.round(((localX - padL) / innerW) * (n-1));
+    idx = Math.max(0, Math.min(n-1, idx));
+    const r = rows[idx];
+    const xx = x(idx);
+    line.setAttribute('x1', xx); line.setAttribute('x2', xx);
+    circle.setAttribute('cx', xx);
+    circle.setAttribute('cy', y(r[seriesDefs[0].field]||0));
+    ttG.style.display = 'block';
+    ttBox.style.display = 'block';
+    ttBox.innerHTML = `<b style="color:var(--text)">${r.Date_Display}</b> &nbsp; ` +
+      seriesDefs.map(s => `<span style="color:${s.color}">${s.label}: ${fmt(r[s.field]||0)} kWh</span>`).join(' &nbsp; ');
+  }
+  function hideTooltip(){ ttG.style.display='none'; ttBox.style.display='none'; }
+
+  hitEl.addEventListener('mousemove', e => showTooltip(e.clientX));
+  hitEl.addEventListener('mouseleave', hideTooltip);
+  hitEl.addEventListener('touchstart', e => { showTooltip(e.touches[0].clientX); }, {passive:true});
+  hitEl.addEventListener('touchmove', e => { showTooltip(e.touches[0].clientX); }, {passive:true});
+  hitEl.addEventListener('touchend', hideTooltip);
+}
+
+load();
+</script>
+</body>
+</html>
