@@ -18,10 +18,13 @@ manueller Lauf mit ROLLING_DAYS=30 nach einem Bugfix).
 Endpunkte:
   - GET /v1/statistics/gateways/{smId}?accuracy=day&from=...&to=...
     (Gesamtsumme, ein Aufruf pro Tag)
-  - GET /v1/consumption/sensor/{sensorId}?period=week
-    (liefert die letzten ~7 Tage pro Geraet in einem Aufruf; reicht
-    fuer 10 Tage nicht ganz -> zusaetzlich period=month als Ergaenzung
-    fuer die aeltesten Tage im 10-Tage-Fenster)
+  - GET /v3/devices/{deviceId}/data/range?from=...&to=...&interval=900
+    (Rohdatenpunkte pro Geraet, ein Aufruf pro Tag pro Geraet; ersetzt
+    das ehemals genutzte /v1/consumption/sensor/{sensorId}?period=...,
+    dessen Tagesgrenzen server-seitig unkontrollierbar waren. Jeder
+    Punkt enthaelt 'iWh' -- den fertigen Verbrauch DIESES 15'-Intervalls
+    -- der direkt pro Tag aufsummiert wird, kein Differenzbilden noetig.
+    Verifiziert per Debug-Test am 21.08.2026.)
 
 GridFrom_kWh / GridTo_kWh werden abgeleitet, da die Statistik-API
 keinen direkten Netzbezug/-einspeisungswert liefert:
@@ -119,21 +122,46 @@ def last_n_complete_days_zurich(n: int):
     return days
 
 
+def fetch_device_range(device_id: str, from_iso: str, to_iso: str, interval: int = 900) -> list:
+    """Holt Rohdatenpunkte fuer ein Geraet ueber /v3/devices/{deviceId}/data/range
+    (ersetzt /v1/data/sensor/{sensorId}/range). Nimmt explizite from/to-
+    Zeitstempel entgegen -- im Gegensatz zum alten /v1/consumption/sensor
+    (period=week/month) haben wir hier volle Kontrolle ueber die
+    Tagesgrenze und koennen dieselbe korrekte Zuerich-Lokalzeit-Grenze
+    verwenden wie beim Gateway-Total.
+
+    Jeder Punkt enthaelt u.a. 'iWh' (Verbrauch DIESES Intervalls in Wh --
+    kein Zaehler, direkt aufsummierbar) und 'iWhTotal' (kumulativer
+    Lifetime-Zaehler, hier nicht benoetigt). Verifiziert per Debug-Test
+    am 21.08.2026 gegen Geraet 65d8b14d8c3c733fc7e1a3c2."""
+    resp = requests.get(
+        f"{SM_BASE_URL}/v3/devices/{device_id}/data/range",
+        params={"from": from_iso, "to": to_iso, "interval": interval},
+        headers=auth_headers(),
+        timeout=30,
+    )
+    resp.raise_for_status()
+    payload = resp.json()
+    if isinstance(payload, list):
+        return payload
+    if isinstance(payload, dict):
+        for key in ("data", "values", "points", "result", "results"):
+            if isinstance(payload.get(key), list):
+                return payload[key]
+    return []
+
+
+def sum_device_day_wh(points: list) -> float:
+    """Summiert das bereits fertige Intervall-Feld 'iWh' ueber alle
+    Punkte eines Tages (kein Differenzbilden noetig, iWh ist bereits
+    der Verbrauch des jeweiligen Intervalls, nicht der Zaehlerstand)."""
+    return sum((p.get("iWh") or 0) for p in points)
+
+
 def fetch_gateway_day_stats(from_iso: str, to_iso: str) -> dict:
     resp = requests.get(
         f"{SM_BASE_URL}/v1/statistics/gateways/{SM_GATEWAY_ID}",
         params={"accuracy": "day", "from": from_iso, "to": to_iso},
-        headers=auth_headers(),
-        timeout=15,
-    )
-    resp.raise_for_status()
-    return resp.json()
-
-
-def fetch_device_period(sensor_id: str, period: str) -> dict:
-    resp = requests.get(
-        f"{SM_BASE_URL}/v1/consumption/sensor/{sensor_id}",
-        params={"period": period},
         headers=auth_headers(),
         timeout=15,
     )
@@ -330,27 +358,24 @@ def main():
         gateway_stats_by_date[day_date.isoformat()] = stats
         print(f"  -> gespeichert: {json.dumps(stats)}")
 
-    # --- 2) Pro Geraet (period=week deckt ~7 Tage, period=month den Rest) ---
+    # --- 2) Pro Geraet, Tag fuer Tag (dieselben korrekten Zuerich-
+    #        Tagesgrenzen wie beim Gateway-Total, ueber /v3/devices/.../data/range) ---
     device_wh_by_date_and_device = {}  # {stat_date: {device_id: wh}}
     for device_id in DEVICE_IDS:
-        combined_by_date = {}
-        for period in ("week", "month"):
-            print(f"Geraete-Statistik fuer {device_id} (period={period}) ...")
+        n_days_ok = 0
+        for day_date, from_iso, to_iso in days:
+            stat_date = day_date.isoformat()
+            print(f"Geraete-Statistik fuer {device_id} ({stat_date}) ...")
             try:
-                result = fetch_device_period(device_id, period)
+                points = fetch_device_range(device_id, from_iso, to_iso, interval=900)
             except requests.HTTPError as e:
                 print(f"  -> Fehler, ueberspringe: {e}", file=sys.stderr)
                 continue
-            for entry in result.get("data", []):
-                stat_date = entry.get("createdAt")
-                consumption = entry.get("consumption")
-                if stat_date in day_dates_iso:
-                    combined_by_date[stat_date] = consumption
-
-        for stat_date, consumption in combined_by_date.items():
-            upsert_device_day(conn, stat_date, device_id, consumption)
-            device_wh_by_date_and_device.setdefault(stat_date, {})[device_id] = consumption
-        print(f"  -> {len(combined_by_date)} Tage im Fenster gespeichert")
+            wh = sum_device_day_wh(points)
+            upsert_device_day(conn, stat_date, device_id, wh)
+            device_wh_by_date_and_device.setdefault(stat_date, {})[device_id] = wh
+            n_days_ok += 1
+        print(f"  -> {n_days_ok}/{len(days)} Tage gespeichert")
 
     # --- 3) Zusammenfuehren in solarmanager_data ---
     bezeichnung_by_device = get_device_bezeichnung_map(conn)
