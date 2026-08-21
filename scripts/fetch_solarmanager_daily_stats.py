@@ -233,11 +233,11 @@ def upsert_device_day(conn, stat_date: str, device_id: str, consumption_wh: floa
 
 
 def get_device_bezeichnung_map(conn) -> dict:
-    """device_id -> Bezeichnung, aus solarmanager_devices."""
+    """device_id -> Bezeichnung (getrimmt), aus solarmanager_devices."""
     rows = conn.execute(
         "SELECT device_id, Bezeichnung FROM solarmanager_devices"
     ).fetchall()
-    return {row[0]: row[1] for row in rows if row[1]}
+    return {row[0]: row[1].strip() for row in rows if row[1] and row[1].strip()}
 
 
 def upsert_solarmanager_data(conn, stat_date: str, gateway_stats: dict,
