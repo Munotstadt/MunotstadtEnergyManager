@@ -1,0 +1,52 @@
+name: Deploy Pages (mit Token-Injection)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build-Ordner vorbereiten (Kopie des Repos ohne .git/.github)
+        run: |
+          mkdir -p dist
+          rsync -a --exclude='.git' --exclude='.github' --exclude='dist' ./ dist/
+
+      - name: Turso Read-Only Token in index.html einsetzen
+        env:
+          TURSO_READONLY_TOKEN: ${{ secrets.TURSO_READONLY_TOKEN }}
+        run: |
+          if [ -z "$TURSO_READONLY_TOKEN" ]; then
+            echo "::error::Secret TURSO_READONLY_TOKEN ist nicht gesetzt (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          sed -i "s|__TURSO_READONLY_TOKEN__|${TURSO_READONLY_TOKEN}|g" dist/index.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
