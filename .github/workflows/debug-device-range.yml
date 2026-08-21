@@ -1,0 +1,47 @@
+name: DEBUG - Device Range Test (einmalig)
+
+on:
+  workflow_dispatch:
+    inputs:
+      device_id:
+        description: "Geraete-ID (device_id / sensorId)"
+        required: true
+        default: "65d8b14d8c3c733fc7e1a3c2"
+      date:
+        description: "Schweizer Kalendertag YYYY-MM-DD (leer = gestern)"
+        required: false
+        default: ""
+      interval:
+        description: "Intervall in Sekunden"
+        required: true
+        default: "900"
+        type: choice
+        options:
+          - "10"
+          - "300"
+          - "900"
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependencies installieren
+        run: pip install -r scripts/requirements-solarmanager-live.txt
+
+      - name: Device-Range Debug-Abfrage
+        env:
+          SM_EMAIL: ${{ secrets.SM_EMAIL }}
+          SM_API_KEY: ${{ secrets.SM_API_KEY }}
+          SM_BASE_URL: ${{ vars.SM_BASE_URL }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          DEBUG_DEVICE_ID: ${{ github.event.inputs.device_id }}
+          DEBUG_DATE: ${{ github.event.inputs.date }}
+          DEBUG_INTERVAL: ${{ github.event.inputs.interval }}
+        run: python scripts/debug_device_range.py
