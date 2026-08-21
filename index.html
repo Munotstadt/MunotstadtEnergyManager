@@ -115,7 +115,7 @@
     <h1>Energy Dashboard</h1>
     <div class="sub" id="subline">Lade Daten...</div>
   </div>
-  <div id="status">Lade solarmanager_daily.json...</div>
+  <div id="status">Lade Daten von Turso...</div>
   <div id="content" style="display:none;">
 
     <div class="kpi-grid" id="kpiGrid"></div>
@@ -218,6 +218,80 @@
 <script>
 const JSON_PATH = "data/solarmanager_daily.json";
 
+// ---------- Turso (live) ----------
+// Read-only Token via `turso db tokens create munotstadtenergydb --read-only --expiration never`
+const TURSO_URL = "https://munotstadtenergydb-munotstadt.aws-eu-west-1.turso.io/v2/pipeline";
+const TURSO_READONLY_TOKEN = "__TURSO_READONLY_TOKEN__";
+const TURSO_NUMERIC_COLS = ["Consumption_kWh","Production_kWh","GridFrom_kWh","GridTo_kWh","Entfeuchter_Waschen_kWh","Wasserpumpe_kWh","Ladestation_kWh"];
+
+const CACHE_KEY = "munotstadt_solarmanager_cache_v1";
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 Minuten
+
+function readCache(){
+  try{
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e){ return null; }
+}
+function writeCache(rows){
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), rows })); }
+  catch(e){ /* best effort, z.B. Storage voll */ }
+}
+
+async function fetchFromTurso(){
+  const body = {
+    requests: [
+      { type:"execute", stmt:{ sql:
+        "SELECT Date_ISO, Date_Display, Consumption_kWh, Production_kWh, GridFrom_kWh, GridTo_kWh, Entfeuchter_Waschen_kWh, Wasserpumpe_kWh, Ladestation_kWh, updated_at FROM solarmanager_data ORDER BY Date_ISO"
+      }},
+      { type:"close" }
+    ]
+  };
+  const res = await fetch(TURSO_URL, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${TURSO_READONLY_TOKEN}` },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`Turso HTTP ${res.status}`);
+  const data = await res.json();
+  const result = data.results?.[0];
+  if (result?.type === "error") throw new Error(result.error?.message || "Turso-Fehler");
+  const r = result?.response?.result;
+  if (!r || !r.rows) return [];
+  const cols = r.cols.map(c => c.name);
+  return r.rows.map(row => {
+    const obj = {};
+    row.forEach((cell, i) => {
+      const key = cols[i];
+      const raw = cell.value === undefined ? null : cell.value;
+      obj[key] = (raw !== null && TURSO_NUMERIC_COLS.includes(key)) ? Number(raw) : raw;
+    });
+    return obj;
+  });
+}
+
+async function fetchFromJsonFallback(){
+  const res = await fetch(JSON_PATH, {cache:"no-store"});
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const payload = await res.json();
+  return payload.data || [];
+}
+
+function applyData(rows, sourceLabel){
+  DATA = rows.slice().sort((a,b)=> a.Date_ISO < b.Date_ISO ? -1 : 1);
+  if (DATA.length === 0){
+    document.getElementById('status').textContent = "Noch keine Daten vorhanden.";
+    return false;
+  }
+  document.getElementById('status').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('subline').textContent =
+    `${DATA[0].Date_Display} – ${DATA[DATA.length-1].Date_Display} · ${DATA.length} Tage`;
+  document.getElementById('footerInfo').textContent = `Datenquelle: ${sourceLabel}`;
+  renderAll();
+  return true;
+}
+
 const COLORS = {
   consumption: "#E30613", production: "#1f9d55",
   gridFrom: "#b9770e", gridTo: "#1f6feb",
@@ -244,24 +318,36 @@ function parseISO(iso){
 
 // ---------- Data loading ----------
 async function load(){
+  // 1) Sofort gecachte Daten zeigen, falls vorhanden (stale-while-revalidate)
+  const cached = readCache();
+  let shownFromCache = false;
+  if (cached && cached.rows && cached.rows.length){
+    applyData(cached.rows, `Turso (Cache · ${new Date(cached.ts).toLocaleTimeString('de-CH')})`);
+    shownFromCache = true;
+  }
+
+  const isFresh = cached && (Date.now() - cached.ts < CACHE_TTL_MS);
+  if (isFresh) return; // Cache noch innerhalb TTL, kein Reload nötig
+
+  // 2) Im Hintergrund (bzw. beim ersten Laden direkt sichtbar) neu von Turso laden
   try{
-    const res = await fetch(JSON_PATH, {cache:"no-store"});
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const payload = await res.json();
-    DATA = (payload.data || []).slice().sort((a,b)=> a.Date_ISO < b.Date_ISO ? -1 : 1);
-    if (DATA.length === 0){
-      document.getElementById('status').textContent = "Noch keine Daten vorhanden. Bitte zuerst einen Export hochladen.";
-      return;
-    }
-    document.getElementById('status').style.display = 'none';
-    document.getElementById('content').style.display = 'block';
-    document.getElementById('subline').textContent =
-      `${DATA[0].Date_Display} – ${DATA[DATA.length-1].Date_Display} · ${DATA.length} Tage`;
-    document.getElementById('footerInfo').textContent =
-      `Datenstand: ${payload.generated_at || '–'} · ${payload.row_count ?? DATA.length} Zeilen`;
-    renderAll();
+    const rows = await fetchFromTurso();
+    if (rows.length === 0) throw new Error("Keine Daten von Turso erhalten");
+    writeCache(rows);
+    applyData(rows, "Turso (live)");
   } catch(e){
-    document.getElementById('status').textContent = `Fehler beim Laden: ${e.message}`;
+    console.warn("Turso-Zugriff fehlgeschlagen, Fallback:", e);
+    if (!shownFromCache){
+      try{
+        const rows = await fetchFromJsonFallback();
+        applyData(rows, "JSON-Fallback (Turso nicht erreichbar)");
+      } catch(e2){
+        document.getElementById('status').textContent = `Fehler beim Laden: ${e2.message}`;
+      }
+    } else {
+      const footer = document.getElementById('footerInfo');
+      footer.textContent += " · Live-Update fehlgeschlagen, zeige Cache";
+    }
   }
 }
 
