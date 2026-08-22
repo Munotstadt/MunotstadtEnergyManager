@@ -127,7 +127,7 @@ const CACHE_TTL_MS = 15 * 60 * 1000; // 15 Minuten
 let DATA = [];
 let currentRange = "365";
 
-function fmt(n, digits=0){
+function fmt(n, digits=1){
   if (n === null || n === undefined || isNaN(n)) return "–";
   return n.toLocaleString('de-CH', {minimumFractionDigits:digits, maximumFractionDigits:digits});
 }
@@ -206,7 +206,7 @@ function metricsFromRow(r){
 function cellVal(metrics, col){
   const v = metrics[col.key];
   if (v === null || v === undefined) return "–";
-  return col.percent ? `${fmt(v,1)}%` : fmt(v,0);
+  return col.percent ? `${fmt(v,1)}%` : fmt(v,1);
 }
 
 function applyData(rows, sourceLabel){
